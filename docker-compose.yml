@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  # 1. Le conteneur de la base de données
+  mongodb:
+    image: mongo:latest
+    container_name: admin_mongodb
+    ports:
+      - "27019:27017"
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=adminUser
+      - MONGO_INITDB_ROOT_PASSWORD=08062003
+    volumes:
+      - mongo_data:/data/db # Permet de ne pas perdre tes données si le conteneur redémarre
+
+  # 2. Le conteneur de ton application Spring Boot
+  backend:
+    build: .
+    container_name: admin_backend
+    ports:
+      - "8083:8083" # Le port de ton API
+    depends_on:
+      - mongodb
+    environment:
+      # L'astuce est ici : on remplace "localhost" par "mongodb" (le nom du service ci-dessus) !
+      - SPRING_DATA_MONGODB_URI=mongodb://adminUser:08062003@mongodb:27017/admin_db?authSource=admin
+
+# Déclaration du volume de stockage
+volumes:
+  mongo_data:
