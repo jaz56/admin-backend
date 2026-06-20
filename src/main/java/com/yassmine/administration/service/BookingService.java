@@ -2,8 +2,10 @@ package com.yassmine.administration.service;
 
 import com.yassmine.administration.exception.ResourceNotFoundException;
 import com.yassmine.administration.model.Booking;
+import com.yassmine.administration.model.Demande;
 import com.yassmine.administration.model.User;
 import com.yassmine.administration.repository.BookingRepository;
+import com.yassmine.administration.repository.DemandeRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.data.domain.Page;
@@ -12,39 +14,21 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
-
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.core.query.Criteria;
 @Service
 @RequiredArgsConstructor
 public class BookingService {
 
     private final BookingRepository bookingRepository;
     private final UserService userService;
-
-    public Booking createForUser(Booking booking, String userEmail) {
-        User user = userService.getByEmail(userEmail);
-
-        // S'assurer que userId est bien défini
-        booking.setUserId(user.getId());
-
-        if (booking.getUniqueId() == null || booking.getUniqueId().isEmpty()) {
-            booking.setUniqueId("BK" + UUID.randomUUID().toString()
-                    .replace("-", "").substring(0, 8).toUpperCase());
-        }
-
-        booking.setInterviewStatus("En attente");
-        booking.setInterviewCompleted(false);
-        booking.setPaymentStatus("paid");
-        booking.setStatus("confirmed");
-        booking.setStatusUpdateDate("no");
-
-        return bookingRepository.save(booking);
-    }
-
-    public List<Booking> findByUserEmail(String userEmail) {
-        User user = userService.getByEmail(userEmail);
-        return bookingRepository.findByUserId(user.getId());
-    }
+    private final DemandeRepository demandeRepository; // ajouter au constructeur (RequiredArgsConstructor)
+    private final MongoTemplate mongoTemplate;
 
     public Booking getById(String id) {
         return bookingRepository.findById(id)
@@ -102,21 +86,6 @@ public class BookingService {
         return bookingRepository.findAll(pageable);
     }
 
-    public Booking getMyBooking(String userId) {
-        try {
-            List<Booking> bookings = bookingRepository.findByUserId(userId);
-            if (bookings != null && !bookings.isEmpty()) {
-                return bookings.stream()
-                        .filter(b -> !"cancelled".equals(b.getStatus()))
-                        .findFirst()
-                        .orElse(bookings.get(0));
-            }
-            return null;
-        } catch (Throwable t) {
-            t.printStackTrace(); // Si ça crash ici, on le verra enfin dans le terminal !
-            return null;
-        }
-    }
     public Booking updateBookingStatus(String id, String status) {
         // 1. On récupère la réservation (gère automatiquement l'erreur si l'id n'existe pas)
         Booking booking = getById(id);
@@ -132,6 +101,126 @@ public class BookingService {
         }
 
         // 4. On sauvegarde les modifications dans MongoDB
+        return bookingRepository.save(booking);
+    }
+
+    public Booking createForDemande(Map<String, Object> payload) {
+        String demandeId = (String) payload.get("demande");
+
+        Demande demande = demandeRepository.findById(demandeId)
+                .orElseThrow(() -> new ResourceNotFoundException("Demande introuvable"));
+
+        List<String> allowedStatuses = List.of("pre_selection", "acceptee");
+        if (!allowedStatuses.contains(demande.getStatus())) {
+            throw new RuntimeException(
+                    "Impossible de créer un booking : la demande doit être au statut 'Pré-sélection' ou 'Acceptée' (statut actuel : "
+                            + demande.getStatus() + ")"
+            );
+        }
+
+        Booking booking = new Booking();
+        booking.setUserId((String) payload.get("user"));
+        booking.setDemandeId(demandeId);
+        booking.setAppointmentType((String) payload.get("appointmentType"));
+        booking.setAppointmentTime((String) payload.get("appointmentTime"));
+        booking.setJourneesDestination((String) payload.get("journeesDestination"));
+
+        Object priceObj = payload.get("price");
+        if (priceObj instanceof Number) {
+            booking.setPrice(((Number) priceObj).doubleValue());
+        }
+
+        String dateStr = (String) payload.get("appointmentDate");
+        if (dateStr != null && !dateStr.isEmpty()) {
+            java.time.LocalDate date = java.time.LocalDate.parse(dateStr.substring(0, 10));
+            booking.setAppointmentDate(date.atStartOfDay());
+        }
+
+        // NOUVEAU : ID séquentiel BK000001, BK000002, ...
+        booking.setUniqueId(generateNextBookingId());
+
+        booking.setInterviewStatus("En attente");
+        booking.setInterviewCompleted(false);
+        booking.setPaymentStatus("pending");
+        booking.setStatus("confirmed");
+        booking.setStatusUpdateDate("no");
+
+        return bookingRepository.save(booking);
+    }    private String generateNextBookingId() {
+        Query query = new Query(Criteria.where("uniqueId").regex("^BK\\d+$"));
+        query.fields().include("uniqueId");
+
+        List<Booking> bookings = mongoTemplate.find(query, Booking.class);
+
+        int maxId = 0;
+        for (Booking b : bookings) {
+            String uid = b.getUniqueId();
+            if (uid != null && uid.matches("^BK\\d+$")) {
+                try {
+                    int num = Integer.parseInt(uid.substring(2));
+                    if (num > maxId) maxId = num;
+                } catch (NumberFormatException ignored) {}
+            }
+        }
+
+        int nextId = maxId + 1;
+        return String.format("BK%06d", nextId); // BK000125, etc.
+    }
+    public Booking updateBookingFields(String id, Map<String, Object> payload) {
+        Booking booking = getById(id);
+
+        if (payload.containsKey("appointmentType")) {
+            booking.setAppointmentType((String) payload.get("appointmentType"));
+        }
+        if (payload.containsKey("appointmentTime")) {
+            booking.setAppointmentTime((String) payload.get("appointmentTime"));
+        }
+        if (payload.containsKey("appointmentDate")) {
+            String dateStr = (String) payload.get("appointmentDate");
+            if (dateStr != null && !dateStr.isEmpty()) {
+                java.time.LocalDate date = java.time.LocalDate.parse(dateStr.substring(0, 10));
+                booking.setAppointmentDate(date.atStartOfDay());
+            }
+        }
+        if (payload.containsKey("price")) {
+            Object priceObj = payload.get("price");
+            if (priceObj instanceof Number) {
+                booking.setPrice(((Number) priceObj).doubleValue());
+            }
+        }
+        if (payload.containsKey("journeesDestination")) {
+            booking.setJourneesDestination((String) payload.get("journeesDestination"));
+        }
+        if (payload.containsKey("paymentStatus")) {
+            booking.setPaymentStatus((String) payload.get("paymentStatus"));
+        }
+        if (payload.containsKey("status")) {
+            booking.setStatus((String) payload.get("status"));
+        }
+        if (payload.containsKey("interviewStatus")) {
+            booking.setInterviewStatus((String) payload.get("interviewStatus"));
+        }
+        if (payload.containsKey("interviewScore")) {
+            Object scoreObj = payload.get("interviewScore");
+            if (scoreObj instanceof Number) {
+                booking.setInterviewScore(java.math.BigDecimal.valueOf(((Number) scoreObj).doubleValue()));
+            }
+        }
+        if (payload.containsKey("interviewReport")) {
+            booking.setInterviewReport((String) payload.get("interviewReport"));
+        }
+        if (payload.containsKey("interviewRecording")) {
+            booking.setInterviewRecording((String) payload.get("interviewRecording"));
+        }
+        if (payload.containsKey("interviewCompleted")) {
+            Object completedObj = payload.get("interviewCompleted");
+            if (completedObj instanceof Boolean) {
+                booking.setInterviewCompleted((Boolean) completedObj);
+            }
+        }
+        if (payload.containsKey("statusUpdateDate")) {
+            booking.setStatusUpdateDate((String) payload.get("statusUpdateDate"));
+        }
         return bookingRepository.save(booking);
     }
 }

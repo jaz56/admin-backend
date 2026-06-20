@@ -17,6 +17,8 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
+
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -32,59 +34,46 @@ public class DemandeController {
     private final DemandeService demandeService; // Plus besoin de BookingService ici
     @Autowired
     private UserService userService;
-    @PostMapping
-    public ResponseEntity<ApiResponse<Demande>> createDemande(@RequestBody Demande demande, @AuthenticationPrincipal UserDetails userDetails) {
-        Demande saved = demandeService.saveForUser(demande, userDetails.getUsername());
-        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(saved, "Demande soumise"));
-    }
 
-    @GetMapping("/my-demandes")
-    public ResponseEntity<ApiResponse<List<Demande>>> getMyDemandes(@AuthenticationPrincipal UserDetails userDetails) {
-        return ResponseEntity.ok(ApiResponse.success(demandeService.findByUserEmail(userDetails.getUsername()), "Vos demandes"));
-    }
+
+
 
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Map<String, Object>> getAllDemandes(
             @RequestParam(required = false) String status,
+            @RequestParam(required = false) String type,
+            @RequestParam(required = false) String journeesDestination,
+            @RequestParam(required = false) String niveauEtude,
+            @RequestParam(required = false) String condidatStatutActuel,
+            @RequestParam(required = false) String fonction,
+            @RequestParam(required = false) String posteSouhaite,
+            @RequestParam(required = false) String nombreAnneesExperience,
+            @RequestParam(required = false) String paysResidence,
+            @RequestParam(required = false) Boolean besoinVisa,
+            @RequestParam(required = false) Boolean existenceDeGarant,
+            @RequestParam(required = false) Boolean typeHebergement,
+            @RequestParam(required = false) Boolean preinscription,
+            @RequestParam(required = false) Boolean handicape,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int limit) {
 
-        // On trie automatiquement par date de création décroissante
         Pageable pageable = PageRequest.of(page, limit, Sort.by("createdAt").descending());
 
-        // 💡 MODIFICATION ICI : On utilise Page<DemandeResponseDTO> au lieu de Page<Demande>
-        Page<DemandeResponseDTO> demandesPage = demandeService.getAllDemandes(status, pageable);
+        Page<DemandeResponseDTO> result = demandeService.getAllDemandesFiltered(
+                status, type, journeesDestination, niveauEtude,
+                condidatStatutActuel, fonction, posteSouhaite,
+                nombreAnneesExperience, paysResidence,
+                besoinVisa, existenceDeGarant, typeHebergement,
+                preinscription, handicape, pageable);
 
-        // On prépare la structure exacte attendue par ton demandes.component.ts
-        Map<String, Object> response = new java.util.HashMap<>();
-        response.put("data", demandesPage.getContent());       // La liste des demandes enrichies (res.data)
-        response.put("total", demandesPage.getTotalElements()); // Le nombre total (res.total)
-
+        Map<String, Object> response = new HashMap<>();
+        response.put("data", result.getContent());
+        response.put("total", result.getTotalElements());
         return ResponseEntity.ok(response);
     }
 
-    @PutMapping("/{id}")
-    // 1. On enlève le "hasRole('ADMIN')" pour que le candidat connecté puisse modifier son propre dossier !
-    public ResponseEntity<ApiResponse<Demande>> update(
-            @PathVariable String id,
-            @RequestBody Demande demande,
-            @AuthenticationPrincipal UserDetails userDetails) {
 
-        // 2. On récupère l'utilisateur connecté
-        User user = userService.getByEmail(userDetails.getUsername());
-
-        // 3. On passe bien les 3 arguments (id, données, et ID utilisateur pour la sécurité)
-        Demande updatedDemande = demandeService.updateDemande(id, demande, user.getId());
-
-        return ResponseEntity.ok(ApiResponse.success(updatedDemande, "Demande mise à jour avec succès"));
-    }
-
-    @DeleteMapping("/{id}")
-    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable String id, @AuthenticationPrincipal UserDetails userDetails) {
-        demandeService.deleteDemande(id, userDetails.getUsername());
-        return ResponseEntity.ok(ApiResponse.success(null, "Demande supprimée avec succès"));
-    }
     @PatchMapping("/{id}/status")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Demande>> updateDemandeStatus(
@@ -101,11 +90,34 @@ public class DemandeController {
         Demande updated = demandeService.updateProgress(id, progress, status);
         return ResponseEntity.ok(ApiResponse.success(updated, "Le statut de la demande a été mis à jour par l'admin"));
     }
-    @GetMapping("/me")
-    public ResponseEntity<ApiResponse<Demande>> getMyDemande(@AuthenticationPrincipal UserDetails userDetails) {
-        User user = userService.getByEmail(userDetails.getUsername());
-        Demande demande = demandeService.getMyDemande(user.getId());
-        return ResponseEntity.ok(ApiResponse.success(demande, "Dossier récupéré"));
+
+    @GetMapping("/{id}")
+    public ResponseEntity<ApiResponse<Demande>> getById(@PathVariable String id) {
+        Demande demande = demandeService.getById(id);
+        return ResponseEntity.ok(ApiResponse.success(demande, "Demande récupérée"));
+    }
+    // DemandeController.java
+    @PostMapping("/admin")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<Demande>> createDemandeAsAdmin(
+            @RequestBody Map<String, Object> payload) {
+        Demande saved = demandeService.createForUserId(payload);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success(saved, "Demande créée avec succès"));
+    }
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'ROLE_ADMIN', 'admin', 'ROLE_admin')")
+    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable String id) {
+        demandeService.deleteDemandeAsAdmin(id);
+        return ResponseEntity.ok(ApiResponse.success(null, "Demande et bookings associés supprimés avec succès"));
+    }
+    @PutMapping("/{id}")
+    public ResponseEntity<ApiResponse<Demande>> update(
+            @PathVariable String id,
+            @RequestBody Demande demande) {
+        return ResponseEntity.ok(
+                ApiResponse.success(demandeService.update(id, demande), "Demande mise à jour")
+        );
     }
 
 }

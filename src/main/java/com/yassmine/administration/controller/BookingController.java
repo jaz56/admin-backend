@@ -33,39 +33,11 @@ public class BookingController {
     /**
      * AJUSTÉ : Route racine /api/bookings pour correspondre au POST Angular
      */
-    @PostMapping
-    public ResponseEntity<ApiResponse<Booking>> schedule(
-            @RequestBody Booking booking,
-            @AuthenticationPrincipal UserDetails userDetails) {
-        Booking saved = bookingService.createForUser(booking, userDetails.getUsername());
-        return ResponseEntity.ok(ApiResponse.success(saved, "Rendez-vous programmé avec succès"));
-    }
 
     /**
      * ALIGNÉ : Permet au candidat de récupérer sa réservation active
      */
-    @GetMapping("/me")
-    public ResponseEntity<ApiResponse<Booking>> getMyBooking(
-            @AuthenticationPrincipal UserDetails userDetails) {
-        try {
-            if (userDetails == null) {
-                return ResponseEntity.ok(ApiResponse.success(null, "Utilisateur non connecté"));
-            }
-            User user = userService.getByEmail(userDetails.getUsername());
-            if (user == null) {
-                return ResponseEntity.ok(ApiResponse.success(null, "Utilisateur introuvable"));
-            }
 
-            Booking booking = bookingService.getMyBooking(user.getId());
-            return ResponseEntity.ok(
-                    ApiResponse.success(booking,
-                            booking == null ? "Aucun entretien trouvé" : "Entretien récupéré")
-            );
-        } catch (Throwable t) {
-            t.printStackTrace(); // Ce print est ton meilleur ami pour docker logs !
-            return ResponseEntity.ok(ApiResponse.success(null, "Erreur interceptée : " + t.getMessage()));
-        }
-    }
     @PutMapping("/{id}/reschedule")
     public ResponseEntity<ApiResponse<Booking>> reschedule(
             @PathVariable String id,
@@ -123,5 +95,31 @@ public class BookingController {
         Booking updated = bookingService.updateBookingStatus(id, status);
 
         return ResponseEntity.ok(ApiResponse.success(updated, "Statut de la réservation mis à jour"));
+    }
+    @PostMapping("/admin")
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'ROLE_ADMIN', 'admin', 'ROLE_admin')")
+    public ResponseEntity<ApiResponse<Booking>> createAsAdmin(@RequestBody Map<String, Object> payload) {
+        Booking saved = bookingService.createForDemande(payload);
+        return ResponseEntity.ok(ApiResponse.success(saved, "Booking créé avec succès"));
+    }
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'ROLE_ADMIN', 'admin', 'ROLE_admin')")
+    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable String id) {
+        bookingService.deletePermanent(id);
+        return ResponseEntity.ok(ApiResponse.success(null, "Booking supprimé avec succès"));
+    }
+    @GetMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'ROLE_ADMIN', 'admin', 'ROLE_admin')")
+    public ResponseEntity<ApiResponse<Booking>> getById(@PathVariable String id) {
+        Booking booking = bookingService.getById(id);
+        return ResponseEntity.ok(ApiResponse.success(booking, "Booking récupéré"));
+    }
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'ROLE_ADMIN', 'admin', 'ROLE_admin')")
+    public ResponseEntity<ApiResponse<Booking>> update(
+            @PathVariable String id,
+            @RequestBody Map<String, Object> payload) {
+        Booking updated = bookingService.updateBookingFields(id, payload);
+        return ResponseEntity.ok(ApiResponse.success(updated, "Booking mis à jour avec succès"));
     }
 }

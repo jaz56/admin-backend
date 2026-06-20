@@ -30,4 +30,10 @@ public class CountryService {
         Pageable pageable = PageRequest.of(page, limit, Sort.by("name").ascending());
         return countryRepository.findAll(pageable);
     }
+    public Country toggleActive(String id, boolean isActive) {
+        Country country = countryRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Pays introuvable : " + id));
+        country.setActive(isActive);
+        return countryRepository.save(country);
+    }
 }

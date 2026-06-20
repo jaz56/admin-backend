@@ -29,6 +29,9 @@ public class Order {
     private String bookingId;
     private String type;
     private String status;
+    private Double price;
+    private String currency;     // TND
+    private String country;
 
     @Field("user_id")
     private String userId;

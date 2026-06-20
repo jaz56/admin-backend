@@ -57,6 +57,10 @@ public class SecurityConfig {
                         .requestMatchers("/api/bookings/**").hasAnyAuthority("ADMIN", "ROLE_ADMIN", "admin", "ROLE_admin", "CANDIDAT", "ROLE_CANDIDAT", "candidat", "ROLE_candidat")
                         .requestMatchers("/api/demandes/**").hasAnyAuthority("ADMIN", "ROLE_ADMIN", "admin", "ROLE_admin", "CANDIDAT", "ROLE_CANDIDAT", "candidat", "ROLE_candidat")
                         .requestMatchers("/api/orders/**").hasAnyAuthority("ADMIN", "ROLE_ADMIN", "admin", "ROLE_admin", "CANDIDAT", "ROLE_CANDIDAT", "candidat", "ROLE_candidat")
+                        .requestMatchers("/uploads/**").permitAll()   // ← AJOUTE CETTE LIGNE
+                        .requestMatchers("/api/countries/active").permitAll()
+                        .requestMatchers("/api/config/**").permitAll()
+                        .requestMatchers("/api/roles/**").permitAll()
 
                         // Tout le reste nécessite une authentification
                         .anyRequest().authenticated()

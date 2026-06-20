@@ -22,4 +22,5 @@ public class DemandeResponseDTO {
     // Les informations du candidat récupérées depuis la collection Users
     private String candidatNom;
     private String candidatPrenom;
+
 }
