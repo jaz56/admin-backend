@@ -10,6 +10,8 @@ import com.yassmine.administration.model.Demande;
 import com.yassmine.administration.model.Order;
 import com.yassmine.administration.model.User;
 import com.yassmine.administration.model.embedded.Pays;
+import com.yassmine.administration.model.embedded.Subscription;
+import com.yassmine.administration.model.embedded.TransactionDetail;
 import com.yassmine.administration.repository.BookingRepository;
 import com.yassmine.administration.repository.DemandeRepository;
 import com.yassmine.administration.repository.OrderRepository;
@@ -29,12 +31,11 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Map;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.web.multipart.MultipartFile;
 
 @Service
 @RequiredArgsConstructor
@@ -63,33 +64,35 @@ public class UserService {
 
     public User update(User updatedUser) {
         User existingUser = getById(updatedUser.getId());
+        System.out.println("🔍 stbInfo reçu: " + updatedUser.getStbInfo());
 
         // Informations personnelles
         existingUser.setNom(updatedUser.getNom());
         existingUser.setPrenom(updatedUser.getPrenom());
-        existingUser.setEmail(updatedUser.getEmail());                   // ← AJOUT
+        existingUser.setEmail(updatedUser.getEmail());
+        existingUser.setSecondEmail(updatedUser.getSecondEmail());
+        existingUser.setLieuDeNaissance(updatedUser.getLieuDeNaissance());
         existingUser.setNumeroTel(updatedUser.getNumeroTel());
         existingUser.setSexe(updatedUser.getSexe());
-        existingUser.setDateDeNaissance(updatedUser.getDateDeNaissance()); // ← AJOUT
+        existingUser.setDateDeNaissance(updatedUser.getDateDeNaissance());
         existingUser.setPays(updatedUser.getPays());
         existingUser.setAddress(updatedUser.getAddress());
         existingUser.setCodePostal(updatedUser.getCodePostal());
-        existingUser.setPieceIdentite(updatedUser.getPieceIdentite());   // ← AJOUT
-        existingUser.setNationalite(updatedUser.getNationalite());       // ← AJOUT
+        existingUser.setPieceIdentite(updatedUser.getPieceIdentite());
+        existingUser.setNationalite(updatedUser.getNationalite());
 
         // Profil professionnel
         existingUser.setDernierePosteOccupe(updatedUser.getDernierePosteOccupe());
         existingUser.setFonction(updatedUser.getFonction());
-        existingUser.setLangueDeProcedure(updatedUser.getLangueDeProcedure()); // ← AJOUT
-        existingUser.setInteressesPar(updatedUser.getInteressesPar());   // ← AJOUT
-        existingUser.setFavoriteJobs(updatedUser.getFavoriteJobs());     // ← AJOUT
+        existingUser.setLangueDeProcedure(updatedUser.getLangueDeProcedure());
+        existingUser.setInteressesPar(updatedUser.getInteressesPar());
+        existingUser.setFavoriteJobs(updatedUser.getFavoriteJobs());
 
         // Statut & rôle
-        existingUser.setRole(updatedUser.getRole());                     // ← AJOUT
-        existingUser.setVerifiedEmail(updatedUser.isVerifiedEmail());    // ← AJOUT
-        existingUser.setCandidateVerificationStatus(
-                updatedUser.getCandidateVerificationStatus());               // ← AJOUT
-        existingUser.setProgress(updatedUser.getProgress());             // ← AJOUT
+        existingUser.setRole(updatedUser.getRole());
+        existingUser.setVerifiedEmail(updatedUser.isVerifiedEmail());
+        existingUser.setCandidateVerificationStatus(updatedUser.getCandidateVerificationStatus());
+        existingUser.setProgress(updatedUser.getProgress());
 
         // Financier
         existingUser.setBalance(updatedUser.getBalance());
@@ -97,7 +100,12 @@ public class UserService {
         existingUser.setBalanceTransactions(updatedUser.getBalanceTransactions());
         existingUser.setCashbackTransactions(updatedUser.getCashbackTransactions());
 
-        return userRepository.save(existingUser);
+        // ═══ LE CHAÎNON MANQUANT EST ICI ═══
+        existingUser.setStbInfo(updatedUser.getStbInfo());
+
+        User saved = userRepository.save(existingUser);
+        System.out.println("✅ stbInfo sauvegardé: " + saved.getStbInfo());
+        return saved;
     }
 
     public List<User> getAll() {
@@ -168,7 +176,9 @@ public class UserService {
                 .pays(pays)
                 .address(request.getAddress())
                 .codePostal(request.getCodePostal())
-                .nationalite(request.getNationalite() != null ? request.getNationalite() : new ArrayList<>())
+                .nationalite(request.getNationalite() != null
+                        ? new ArrayList<>(request.getNationalite())
+                        : new ArrayList<>())
                 .dernierePosteOccupe(request.getDernierePosteOccupe())
                 .fonction(request.getFonction())
                 .langueDeProcedure(request.getLangueDeProcedure())
@@ -180,8 +190,8 @@ public class UserService {
                 .candidateVerificationStatus("pending")
                 .candidateVerified(false)
                 .profileCompletionPercentage(0)
-                .balance(java.math.BigDecimal.ZERO)
-                .cashback(java.math.BigDecimal.ZERO)
+                .balance(0.0)
+                .cashback(0.0)
                 .createdAt(LocalDateTime.now())
                 .build();
 
@@ -260,8 +270,7 @@ public class UserService {
             criteriaList.add(Criteria.where("pays.label").regex(pays.trim(), "i"));
 
         if (nationalite != null && !nationalite.isEmpty())
-            criteriaList.add(Criteria.where("nationalite").regex(nationalite.trim(), "i"));
-
+            criteriaList.add(Criteria.where("nationalite.label").regex(nationalite.trim(), "i"));
         if (fonction != null && !fonction.isEmpty())
             criteriaList.add(Criteria.where("fonction").regex(fonction.trim(), "i"));
 
@@ -301,28 +310,107 @@ public class UserService {
         return new PageImpl<>(users, pageable, total);
     }
     public String uploadUserFile(String userId, MultipartFile file, String type) {
-        // 1. Stocker le fichier sur disque
         String relativePath = fileStorageService.store(file, userId, type);
-
-        // URL complète avec base
         String fullUrl = "http://localhost:8083" + relativePath;
 
-        // 2. Mettre à jour MongoDB selon le type
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Utilisateur introuvable : " + userId));
 
         switch (type) {
-            case "photo"    -> user.setPhotoDeProfile(fullUrl);
-            case "cinRecto" -> user.setCinRecto(fullUrl);
-            case "cinVerso" -> user.setCinVerso(fullUrl);
-            case "vocal"    -> user.setVocal(fullUrl);
+            case "photo"     -> user.setPhotoDeProfile(fullUrl);
+            case "cinRecto"  -> user.setCinRecto(fullUrl);
+            case "cinVerso"  -> user.setCinVerso(fullUrl);
+            case "vocal"     -> user.setVocal(fullUrl);
+            case "stb_audio" -> {
+                // Ne pas écraser vocal — juste retourner l'URL
+                // L'URL sera mise dans stbInfo.interviewRecording par le frontend
+            }
             default -> throw new RuntimeException("Type de fichier inconnu : " + type);
         }
 
         userRepository.save(user);
-
         System.out.println("✅ Upload réussi : " + fullUrl);
         return fullUrl;
+    }
+    // ── ABONNEMENTS ────────────────────────────────────────────────────────
+
+    public User addSubscription(String userId, Subscription subscription) {
+        User user = getById(userId);
+        if (user.getSubscriptions() == null) user.setSubscriptions(new ArrayList<>());
+        subscription.setId(java.util.UUID.randomUUID().toString());
+        user.getSubscriptions().add(subscription);
+        return userRepository.save(user);
+    }
+
+    public User updateSubscription(String userId, String subId, Subscription updated) {
+        User user = getById(userId);
+        List<Subscription> subs = user.getSubscriptions();
+        if (subs == null) throw new RuntimeException("Aucun abonnement trouvé");
+
+        for (int i = 0; i < subs.size(); i++) {
+            if (subId.equals(subs.get(i).getId())) {
+                updated.setId(subId);
+                subs.set(i, updated);
+                break;
+            }
+        }
+        user.setSubscriptions(subs);
+        return userRepository.save(user);
+    }
+
+    public User deleteSubscription(String userId, String subId) {
+        User user = getById(userId);
+        if (user.getSubscriptions() != null) {
+            user.getSubscriptions().removeIf(s -> subId.equals(s.getId()));
+        }
+        return userRepository.save(user);
+    }
+
+// ── TRANSACTIONS ───────────────────────────────────────────────────────
+
+    public User addTransaction(String userId, TransactionDetail transaction) {
+        User user = getById(userId);
+        if (user.getBalanceTransactions() == null)
+            user.setBalanceTransactions(new ArrayList<>());
+        transaction.setId(java.util.UUID.randomUUID().toString());
+        transaction.setCreatedAt(LocalDateTime.now());
+        user.getBalanceTransactions().add(0, transaction); // ajouter en tête
+        return userRepository.save(user);
+    }
+
+    public User deleteTransaction(String userId, String txId) {
+        User user = getById(userId);
+        if (user.getBalanceTransactions() != null) {
+            user.getBalanceTransactions().removeIf(t -> txId.equals(t.getId()));
+        }
+        return userRepository.save(user);
+    }
+    public User updateStbInfo(String userId, Map<String, Object> body) {
+        User user = getById(userId);
+
+        Object stbData = body.get("stbInfo");
+        if (stbData == null) return user;
+
+        // Convertir la Map en StbInfo via ObjectMapper
+        com.fasterxml.jackson.databind.ObjectMapper mapper =
+                new com.fasterxml.jackson.databind.ObjectMapper();
+        mapper.registerModule(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule());
+        mapper.configure(
+                com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES,
+                false
+        );
+
+        try {
+            com.yassmine.administration.model.embedded.StbInfo stbInfo =
+                    mapper.convertValue(stbData,
+                            com.yassmine.administration.model.embedded.StbInfo.class);
+            user.setStbInfo(stbInfo);
+            System.out.println("✅ STB updated for user: " + userId);
+        } catch (Exception e) {
+            throw new RuntimeException("Erreur conversion STB: " + e.getMessage());
+        }
+
+        return userRepository.save(user);
     }
 
 }

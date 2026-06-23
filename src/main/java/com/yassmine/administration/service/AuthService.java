@@ -14,7 +14,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.math.BigDecimal;
+// ← Supprimer import BigDecimal
 
 @Service
 @RequiredArgsConstructor
@@ -27,7 +27,6 @@ public class AuthService {
     private final UserDetailsServiceImpl userDetailsService;
 
     public JwtResponse login(LoginRequest request) {
-        // Vérifie email + password
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
                         request.getEmail(),
@@ -41,7 +40,6 @@ public class AuthService {
         UserDetails userDetails = userDetailsService.loadUserByUsername(user.getEmail());
         String token = jwtUtil.generateToken(userDetails);
 
-        // Dans AuthService.java, modifiez le retour de la méthode login :
         return JwtResponse.builder()
                 .token(token)
                 .userId(user.getId())
@@ -50,10 +48,11 @@ public class AuthService {
                 .nom(user.getNom())
                 .prenom(user.getPrenom())
                 .photoDeProfile(user.getPhotoDeProfile())
-                .balance(user.getBalance())
+                .balance(user.getBalance())   // ← maintenant Double, compatible
                 .candidateVerificationStatus(user.getCandidateVerificationStatus())
                 .build();
     }
+
     public User register(RegisterRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new RuntimeException("Cet email est déjà utilisé");
@@ -64,10 +63,10 @@ public class AuthService {
                 .nom(request.getNom())
                 .prenom(request.getPrenom())
                 .role(request.getRole().toLowerCase())
-                .password(passwordEncoder.encode(request.getPassword())) // Hachage automatique en BCrypt
+                .password(passwordEncoder.encode(request.getPassword()))
                 .acceptedTerms(request.getAcceptedTerms())
-                .balance(BigDecimal.ZERO)
-                .cashback(BigDecimal.ZERO)
+                .balance(0.0)        // ← CORRIGÉ : Double au lieu de BigDecimal.ZERO
+                .cashback(0.0)       // ← CORRIGÉ : Double au lieu de BigDecimal.ZERO
                 .candidateVerificationStatus("pending")
                 .build();
 

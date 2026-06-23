@@ -42,4 +42,5 @@ public class MongoConfig {
     public ValidatingMongoEventListener validatingMongoEventListener(LocalValidatorFactoryBean factory) {
         return new ValidatingMongoEventListener(factory);
     }
+
 }

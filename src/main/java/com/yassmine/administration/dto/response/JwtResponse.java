@@ -21,6 +21,6 @@ public class JwtResponse {
     private String nom;
     private String prenom;
     private String photoDeProfile;
-    private BigDecimal balance;
+    private Double balance;
     private String candidateVerificationStatus; // Permet d'adapter l'UI Angular directement
 }

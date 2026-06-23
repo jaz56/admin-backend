@@ -5,6 +5,8 @@ import com.yassmine.administration.dto.request.UpdatePasswordRequest;
 import com.yassmine.administration.dto.request.UpdateProfileRequest;
 import com.yassmine.administration.dto.response.ApiResponse;
 import com.yassmine.administration.model.User;
+import com.yassmine.administration.model.embedded.Subscription;
+import com.yassmine.administration.model.embedded.TransactionDetail;
 import com.yassmine.administration.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -123,5 +125,62 @@ public class UserController {
         response.put("url", fileUrl);
 
         return ResponseEntity.ok(ApiResponse.success(response, "Fichier téléversé avec succès"));
+    }
+    // ── ABONNEMENTS ────────────────────────────────────────────────────────
+
+    @PostMapping("/{id}/subscriptions")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<User>> addSubscription(
+            @PathVariable String id,
+            @RequestBody Subscription subscription) {
+        User user = userService.addSubscription(id, subscription);
+        return ResponseEntity.ok(ApiResponse.success(user, "Abonnement ajouté"));
+    }
+
+    @PutMapping("/{id}/subscriptions/{subId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<User>> updateSubscription(
+            @PathVariable String id,
+            @PathVariable String subId,
+            @RequestBody Subscription subscription) {
+        User user = userService.updateSubscription(id, subId, subscription);
+        return ResponseEntity.ok(ApiResponse.success(user, "Abonnement mis à jour"));
+    }
+
+    @DeleteMapping("/{id}/subscriptions/{subId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<User>> deleteSubscription(
+            @PathVariable String id,
+            @PathVariable String subId) {
+        User user = userService.deleteSubscription(id, subId);
+        return ResponseEntity.ok(ApiResponse.success(user, "Abonnement supprimé"));
+    }
+
+// ── TRANSACTIONS ───────────────────────────────────────────────────────
+
+    @PostMapping("/{id}/transactions")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<User>> addTransaction(
+            @PathVariable String id,
+            @RequestBody TransactionDetail transaction) {
+        User user = userService.addTransaction(id, transaction);
+        return ResponseEntity.ok(ApiResponse.success(user, "Transaction ajoutée"));
+    }
+
+    @DeleteMapping("/{id}/transactions/{txId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<User>> deleteTransaction(
+            @PathVariable String id,
+            @PathVariable String txId) {
+        User user = userService.deleteTransaction(id, txId);
+        return ResponseEntity.ok(ApiResponse.success(user, "Transaction supprimée"));
+    }
+    @PutMapping("/{id}/stb")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<User>> updateStbInfo(
+            @PathVariable String id,
+            @RequestBody Map<String, Object> body) {
+        User user = userService.updateStbInfo(id, body);
+        return ResponseEntity.ok(ApiResponse.success(user, "STB mis à jour"));
     }
 }

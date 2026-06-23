@@ -5,6 +5,8 @@ import lombok.*;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+import java.time.LocalDateTime;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -20,4 +22,6 @@ public class ConfigItem {
     private String color;    // pour les badges
     private Integer  order;       // ordre d'affichage
     private Boolean active;
+    private LocalDateTime createdAt;
+
 }

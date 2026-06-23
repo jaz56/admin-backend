@@ -1,13 +1,7 @@
 package com.yassmine.administration.model;
 
-import com.yassmine.administration.model.embedded.CompanyInfo;
-import com.yassmine.administration.model.embedded.Pays;
-import com.yassmine.administration.model.embedded.StbInfo;
-import com.yassmine.administration.model.embedded.TransactionDetail;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import com.yassmine.administration.model.embedded.*;
+import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.LastModifiedDate;
@@ -28,7 +22,9 @@ public class User {
     @Id
     private String id;
 
+    // ── Compte ─────────────────────────────────────────────────────
     private String email;
+    private String secondEmail;          // ← NOUVEAU
     private String uniqueId;
     private String nom;
     private String prenom;
@@ -36,70 +32,85 @@ public class User {
 
     private boolean acceptedTerms;
     private boolean nvRegister;
-    private String progress;
+    private String  progress;
     private boolean verifiedEmail;
-    private String role;
+    private String  role;
 
+    // ── Infos personnelles ─────────────────────────────────────────
     private LocalDateTime dateDeNaissance;
     private String sexe;
-
-    private Pays pays;
-
+    private String lieuDeNaissance;      // ← NOUVEAU
     private String numeroTel;
-    private List<String> interessesPar = new ArrayList<>();
-
-    private String photoDeProfile;
-
-    private StbInfo stbInfo;
-    private CompanyInfo companyInfo;
-    private BigDecimal balance;
-    private BigDecimal cashback;
-
-    // Listes
-    private List<String> favoriteJobs = new ArrayList<>();
-    private List<String> nationalite = new ArrayList<>();
-    private List<String> subscriptions = new ArrayList<>();
-    private List<String> providers = new ArrayList<>();
-
-    // Transactions (à typer plus précisément si vous avez le modèle)
-
-    private List<TransactionDetail> balanceTransactions = new ArrayList<>();
-    private List<TransactionDetail> cashbackTransactions = new ArrayList<>();
-    // Email reminder
-    private LocalDateTime complettProfileEmailLastSent;
-    private Integer complettProfileEmailReminderCount;
-
-    // Vérification candidat
-    private boolean candidateVerified;
-    private String candidateVerificationStatus;
-    private Integer profileCompletionPercentage;
-    private LocalDateTime lastProfileUpload;
-
-    // Profil complémentaire
     private String address;
     private String codePostal;
     private String pieceIdentite;
 
-    public String getDernierePosteOccupe() {
-        return dernierePosteOccupe;
-    }
+    // ── Pays ───────────────────────────────────────────────────────
+    private Pays pays;
 
-    public void setDernierePosteOccupe(String dernierePosteOccupe) {
-        this.dernierePosteOccupe = dernierePosteOccupe;
-    }
+    // ── Nationalité — maintenant liste d'objets ────────────────────
+    @Builder.Default
+    private List<Object> nationalite = new ArrayList<>();  // ← CHANGÉ
 
-    private String dernierePosteOccupe;
-    private String fonction;
-    private String langueDeProcedure;
-
-    // Documents identité
+    // ── Médias ─────────────────────────────────────────────────────
+    private String photoDeProfile;
     private String cinRecto;
     private String cinVerso;
     private String vocal;
 
+    // ── Profil professionnel ───────────────────────────────────────
+    private String dernierePosteOccupe;
+    private String fonction;
+    private String langueDeProcedure;
+
+    @Builder.Default
+    private List<String> interessesPar = new ArrayList<>();
+
+    @Builder.Default
+    private List<String> favoriteJobs = new ArrayList<>();
+
+    // ── Statut candidat ────────────────────────────────────────────
+    private boolean candidateVerified;
+    private String  candidateVerificationStatus;
+    private Integer profileCompletionPercentage;
+
+    // ── Finances ───────────────────────────────────────────────────
+    private Double balance;
+    private Double cashback;
+
+    @Builder.Default
+    private List<TransactionDetail> balanceTransactions  = new ArrayList<>();
+
+    @Builder.Default
+    private List<TransactionDetail> cashbackTransactions = new ArrayList<>();
+
+    // ── Abonnements — maintenant liste d'objets ────────────────────
+    @Builder.Default
+    private List<Subscription> subscriptions = new ArrayList<>();   // ← CHANGÉ
+
+    @Builder.Default
+    private List<String> providers = new ArrayList<>();
+
+    // ── STB ────────────────────────────────────────────────────────
+    private StbInfo stbInfo;
+    private LocalDateTime stbProfileUpdatedAt;                      // ← NOUVEAU
+
+    // ── Entreprise ─────────────────────────────────────────────────
+    private CompanyInfo companyInfo;
+
+    // ── Email reminder ─────────────────────────────────────────────
+    private LocalDateTime complettProfileEmailLastSent;
+    private Integer       complettProfileEmailReminderCount;
+    private LocalDateTime lastProfileUpload;
+
+    // ── Timestamps ─────────────────────────────────────────────────
     @CreatedDate
     private LocalDateTime createdAt;
 
     @LastModifiedDate
     private LocalDateTime updatedAt;
+
+    // ── Getter/Setter manuel (gardé pour compatibilité) ────────────
+    public String getDernierePosteOccupe() { return dernierePosteOccupe; }
+    public void setDernierePosteOccupe(String v) { this.dernierePosteOccupe = v; }
 }
