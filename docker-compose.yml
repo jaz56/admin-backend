@@ -1,0 +1,31 @@
+services:
+  mongodb:
+    image: mongo:latest
+    container_name: admin_mongodb
+    ports:
+      - "27019:27017"
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=adminUser
+      - MONGO_INITDB_ROOT_PASSWORD=08062003
+    volumes:
+      - mongo_data:/data/db
+
+  backend:
+    image: admin-backend
+    container_name: admin_backend
+    ports:
+      - "8083:8083"
+    depends_on:
+      - mongodb
+    environment:
+      - SPRING_DATA_MONGODB_URI=mongodb://adminUser:08062003@mongodb:27017/admin_db?authSource=admin
+      - FILE_UPLOAD_DIR=/app/uploads
+      - APP_BASE_URL=http://localhost:8083
+      - SPRING_SERVLET_MULTIPART_MAX_FILE_SIZE=20MB
+      - SPRING_SERVLET_MULTIPART_MAX_REQUEST_SIZE=20MB
+    volumes:
+      # Monter le dossier uploads local → /app/uploads dans le conteneur
+      - ./uploads:/app/uploads
+
+volumes:
+  mongo_data:

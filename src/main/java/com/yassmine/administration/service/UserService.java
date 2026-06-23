@@ -301,56 +301,28 @@ public class UserService {
         return new PageImpl<>(users, pageable, total);
     }
     public String uploadUserFile(String userId, MultipartFile file, String type) {
-        // 1. Récupérer l'utilisateur
+        // 1. Stocker le fichier sur disque
+        String relativePath = fileStorageService.store(file, userId, type);
+
+        // URL complète avec base
+        String fullUrl = "http://localhost:8083" + relativePath;
+
+        // 2. Mettre à jour MongoDB selon le type
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
+                .orElseThrow(() -> new RuntimeException("Utilisateur introuvable : " + userId));
 
-        try {
-            // 2. Définir le sous-dossier selon le type (photo, cinRecto, cinVerso, vocal)
-            String subFolder = "photo".equals(type) ? "photo" : ("vocal".equals(type) ? "vocal" : "documents");
-            Path uploadDir = Paths.get("uploads/users/" + userId + "/" + subFolder);
-
-            // Créer les dossiers s'ils n'existent pas
-            if (!Files.exists(uploadDir)) {
-                Files.createDirectories(uploadDir);
-            }
-
-            // 3. Nettoyer et définir le nom du fichier
-            String extension = "vocal".equals(type) ? ".wav" : ".jpg";
-            String fileName = type + "_" + System.currentTimeMillis() + extension;
-            Path filePath = uploadDir.resolve(fileName);
-
-            // 4. Copier le fichier sur le disque dur
-            Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
-
-            // 5. Construire l'URL publique que le frontend va appeler
-            String fileUrl = "http://localhost:8083/uploads/users/" + userId + "/" + subFolder + "/" + fileName;
-
-            // 6. Mettre à jour le bon champ de l'utilisateur en BDD selon le type
-            switch (type) {
-                case "photo":
-                    user.setPhotoDeProfile(fileUrl); // Remplacez par le nom exact de votre propriété
-                    break;
-                case "cinRecto":
-                    user.setCinRecto(fileUrl);
-                    break;
-                case "cinVerso":
-                    user.setCinVerso(fileUrl);
-                    break;
-                case "vocal":
-                    user.setVocal(fileUrl);
-                    break;
-                default:
-                    throw new IllegalArgumentException("Type d'upload inconnu: " + type);
-            }
-
-            // Enregistrer en base MongoDB
-            userRepository.save(user);
-
-            return fileUrl;
-
-        } catch (IOException e) {
-            throw new RuntimeException("Erreur lors de l'écriture du fichier sur le serveur", e);
+        switch (type) {
+            case "photo"    -> user.setPhotoDeProfile(fullUrl);
+            case "cinRecto" -> user.setCinRecto(fullUrl);
+            case "cinVerso" -> user.setCinVerso(fullUrl);
+            case "vocal"    -> user.setVocal(fullUrl);
+            default -> throw new RuntimeException("Type de fichier inconnu : " + type);
         }
+
+        userRepository.save(user);
+
+        System.out.println("✅ Upload réussi : " + fullUrl);
+        return fullUrl;
     }
+
 }

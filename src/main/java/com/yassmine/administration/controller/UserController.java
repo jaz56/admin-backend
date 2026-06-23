@@ -14,6 +14,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.HashMap;
 import java.util.List;
@@ -108,14 +109,14 @@ public class UserController {
         return ResponseEntity.ok(ApiResponse.success(null, "Utilisateur et toutes ses données associées supprimés avec succès"));
     }
     // ─── AJOUT DE L'ENDPOINT D'UPLOAD MANQUANT ───
+    // Accepter SOIT /{id}/upload/{type} SOIT /{id}/upload avec ?type=photo
     @PostMapping("/{id}/upload")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Map<String, String>>> uploadFile(
             @PathVariable String id,
-            @RequestParam("file") org.springframework.web.multipart.MultipartFile file,
-            @RequestParam("type") String type) {
+            @RequestParam("file") MultipartFile file,
+            @RequestParam("type") String type) {   // ← type vient du form/param
 
-        // On appelle une méthode dans le service qui gère l'écriture disque et retourne l'URL
         String fileUrl = userService.uploadUserFile(id, file, type);
 
         Map<String, String> response = new HashMap<>();

@@ -13,14 +13,14 @@ import java.nio.file.StandardCopyOption;
 @Service
 public class FileStorageService {
 
-    @Value("${file.upload-dir}")
+    @Value("${file.upload-dir:/app/uploads}")
     private String uploadDir;
 
+    // Garder le nom "store" — c'est ce que UserService appelle
     public String store(MultipartFile file, String userId, String type) {
         try {
-            String folder = uploadDir + "/users/" + userId + "/" + type;
-            Path dirPath = Paths.get(folder);
-            Files.createDirectories(dirPath);
+            Path uploadPath = Paths.get(uploadDir, "users", userId, type);
+            Files.createDirectories(uploadPath);
 
             String originalName = file.getOriginalFilename();
             String extension = "";
@@ -29,13 +29,13 @@ public class FileStorageService {
             }
 
             String filename = type + "_" + System.currentTimeMillis() + extension;
-
-            Path filePath = dirPath.resolve(filename);
+            Path filePath = uploadPath.resolve(filename);
             Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
 
             return "/uploads/users/" + userId + "/" + type + "/" + filename;
+
         } catch (IOException e) {
-            throw new RuntimeException("Erreur lors de l'upload du fichier : " + e.getMessage());
+            throw new RuntimeException("Erreur lors de l'upload : " + e.getMessage(), e);
         }
     }
 }
