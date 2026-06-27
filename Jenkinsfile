@@ -27,18 +27,17 @@ pipeline {
             }
         }
 
-        stage('🧪 Tests unitaires') {
-            steps {
-                echo '=== Lancement des tests ==='
-                sh 'mvn test'
-            }
-            post {
-                always {
-                    // Publier les résultats des tests
-                    junit '**/target/surefire-reports/*.xml'
-                }
-            }
-        }
+       stage('🧪 Tests unitaires') {
+           steps {
+               echo '=== Lancement des tests ==='
+               sh 'mvn test -Dspring.profiles.active=test'
+           }
+           post {
+               always {
+                   junit '**/target/surefire-reports/*.xml'
+               }
+           }
+       }
 
         stage('🔍 Analyse SonarQube') {
             steps {
