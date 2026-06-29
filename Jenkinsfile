@@ -45,7 +45,7 @@ pipeline {
                 withSonarQubeEnv('SonarQube') {
                     sh """
                         mvn sonar:sonar \
-                            -Dsonar.projectKey=admin-backend \
+                            -Dsonar.projectKey=Admin-Backend \
                             -Dsonar.host.url=http://sonarqube:9000 \
                             -Dsonar.token=${SONAR_TOKEN}
                     """
