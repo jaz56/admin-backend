@@ -79,11 +79,17 @@ pipeline {
 
         stage('🚀 Déploiement') {
             steps {
-                echo '=== Déploiement avec Docker Compose ==='
-                sh """
-                    docker-compose down --remove-orphans || true
-                    docker-compose up -d --build
-                """
+                echo '=== Déploiement avec Docker ==='
+                sh '''
+                    docker stop admin_backend || true
+                    docker rm admin_backend || true
+                    docker run -d \
+                        --name admin_backend \
+                        --network administration_default \
+                        -p 8083:8083 \
+                        --restart unless-stopped \
+                        admin-backend:latest
+                '''
             }
         }
     }
