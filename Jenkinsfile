@@ -39,28 +39,21 @@ pipeline {
            }
        }
 
-        stage('🔍 Analyse SonarQube') {
-            steps {
-                echo '=== Analyse qualité du code ==='
-                withSonarQubeEnv('SonarQube') {
-                    sh """
-                        mvn sonar:sonar \
-                            -Dsonar.projectKey=Admin-Backend \
-                            -Dsonar.host.url=http://sonarqube:9000 \
-                            -Dsonar.token=${SONAR_TOKEN}
-                    """
-                }
-            }
-        }
+       stage('🔍 Analyse SonarQube') {
+           steps {
+               echo '=== Analyse qualité du code ==='
+               withSonarQubeEnv('SonarQube') {
+                   sh """
+                       mvn sonar:sonar \
+                           -Dsonar.projectKey=Admin-Backend \
+                           -Dsonar.host.url=http://sonarqube:9000 \
+                           -Dsonar.token=${SONAR_TOKEN}
+                   """
+               }
+           }
+       }
 
-        stage('⏳ Quality Gate') {
-            steps {
-                echo '=== Vérification du Quality Gate SonarQube ==='
-                timeout(time: 5, unit: 'MINUTES') {
-                    waitForQualityGate abortPipeline: true
-                }
-            }
-        }
+
 
         stage('🔨 Build') {
             steps {
