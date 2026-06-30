@@ -87,12 +87,16 @@ pipeline {
                        --name admin_backend \
                        --network administration_default \
                        -p 8083:8083 \
+                       -v admin_uploads:/app/uploads \
                        -e SPRING_DATA_MONGODB_URI="mongodb://adminUser:08062003@admin_mongodb:27017/admin_db?authSource=admin" \
                        -e JWT_SECRET="Y2Q4OWI0M2VlZjZkNTk3YjRlZGNhYzc2MjhkYjhmZTU0ZDVhMzE0ZTJiMjc4NmViNDFiYWVjODNiNmEyZWY5YQ==" \
                        -e JWT_EXPIRATION="86400000" \
                        -e SERVER_PORT="8083" \
                        -e FILE_UPLOAD_DIR="/app/uploads" \
                        -e APP_BASE_URL="http://localhost:8083" \
+                       -e SPRING_SERVLET_MULTIPART_MAX_FILE_SIZE="50MB" \
+                       -e SPRING_SERVLET_MULTIPART_MAX_REQUEST_SIZE="50MB" \
+                       -e SERVER_TOMCAT_MAX_SWALLOW_SIZE="50MB" \
                        --restart unless-stopped \
                        admin-backend:latest
                '''
