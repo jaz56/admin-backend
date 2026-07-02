@@ -66,4 +66,21 @@ public class CountryController {
         Country updated = countryService.toggleActive(id, isActive);
         return ResponseEntity.ok(ApiResponse.success(updated, "Statut mis à jour"));
     }
+    @GetMapping("/active-nationalities")
+    public ResponseEntity<List<Map<String, String>>> getActiveNationalities() {
+        List<Country> countries = countryRepository.findAllActive();
+
+        List<Map<String, String>> result = countries.stream()
+                .filter(c -> c.getNationality() != null && c.getCode() != null)
+                .sorted(Comparator.comparing(Country::getNationality)) // Trié par nationalité
+                .map(c -> {
+                    Map<String, String> m = new LinkedHashMap<>();
+                    m.put("value", c.getCode());
+                    m.put("label", c.getNationality()); // ← On utilise la nationalité ici !
+                    return m;
+                })
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(result);
+    }
 }

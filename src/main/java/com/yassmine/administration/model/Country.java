@@ -48,4 +48,6 @@ public class Country {
         private Integer id;
         private String name;
     }
+    // Dans ton fichier Country.java
+    private String nationality; // Exemple: "Tunisienne", "Française"
 }
