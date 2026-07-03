@@ -8,8 +8,10 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.data.convert.ReadingConverter;
+import org.springframework.data.mongodb.MongoDatabaseFactory;
 import org.springframework.data.mongodb.config.EnableMongoAuditing;
 import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.SimpleMongoClientDatabaseFactory;
 import org.springframework.data.mongodb.core.convert.DefaultMongoTypeMapper;
 import org.springframework.data.mongodb.core.convert.MappingMongoConverter;
 import org.springframework.data.mongodb.core.convert.MongoCustomConversions;
@@ -33,6 +35,11 @@ public class MongoConfig {
     }
 
     @Bean
+    public MongoDatabaseFactory mongoDatabaseFactory() {
+        return new SimpleMongoClientDatabaseFactory(mongoClient(), "admin_db");
+    }
+
+    @Bean
     public MongoCustomConversions customConversions() {
         return new MongoCustomConversions(
                 Arrays.asList(new ArrayListToNationaliteItemConverter())
@@ -41,21 +48,18 @@ public class MongoConfig {
 
     @Bean
     public MongoTemplate mongoTemplate() throws Exception {
-        // 1. Créer le mapping context
         MongoMappingContext mappingContext = new MongoMappingContext();
         mappingContext.afterPropertiesSet();
 
-        // 2. Créer le converter avec les CustomConversions injectées
         MappingMongoConverter converter = new MappingMongoConverter(
-                org.springframework.data.mongodb.core.convert.NoOpDbRefResolver.INSTANCE,
+                mongoDatabaseFactory(),
                 mappingContext
         );
-        converter.setCustomConversions(customConversions()); // ← clé du fix
+        converter.setCustomConversions(customConversions());
         converter.setTypeMapper(new DefaultMongoTypeMapper(null));
         converter.afterPropertiesSet();
 
-        // 3. Créer le MongoTemplate avec ce converter
-        return new MongoTemplate(mongoClient(), "admin_db", converter);
+        return new MongoTemplate(mongoDatabaseFactory(), converter);
     }
 
     @Bean
