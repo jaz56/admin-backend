@@ -41,7 +41,7 @@ public class AdminStatsService {
         return DashboardStatsDTO.builder()
                 .totalUsers(totalUsers)
                 .totalDemandes(totalDemandes)
-                .totalBookings(totalBookings)
+                .totalEntretiens(totalBookings)
                 .totalRevenue(totalRevenue)
                 .demandesByStatus(demandesByStatus)
                 .build();

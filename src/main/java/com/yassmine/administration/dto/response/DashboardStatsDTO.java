@@ -9,7 +9,7 @@ import java.util.Map;
 public class DashboardStatsDTO {
     private long totalUsers;
     private long totalDemandes;
-    private long totalBookings;
+    private long totalEntretiens; ;
     private double totalRevenue;
     private Map<String, Long> demandesByStatus; // Ex: {"pre_selection": 5, "accepte_pour_entretien": 1}
 }
