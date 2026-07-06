@@ -4,9 +4,11 @@ import com.yassmine.administration.dto.response.ApiResponse;
 import com.yassmine.administration.model.Booking;
 import com.yassmine.administration.model.User;
 import com.yassmine.administration.service.BookingService;
+import com.yassmine.administration.service.FileStorageService;
 import com.yassmine.administration.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -14,6 +16,8 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.web.multipart.MultipartFile;
+
 import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.List;
@@ -26,10 +30,11 @@ import java.util.Map;
 public class BookingController {
 
     private final BookingService bookingService;
-
+    private final FileStorageService fileStorageService;
     @Autowired
     private UserService userService;
-
+    @Value("${app.base-url}")
+    private String appBaseUrl;
     /**
      * AJUSTÉ : Route racine /api/bookings pour correspondre au POST Angular
      */
@@ -121,5 +126,54 @@ public class BookingController {
             @RequestBody Map<String, Object> payload) {
         Booking updated = bookingService.updateBookingFields(id, payload);
         return ResponseEntity.ok(ApiResponse.success(updated, "Booking mis à jour avec succès"));
+    }
+    @PostMapping("/{id}/upload-recording")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<String>> uploadRecording(
+            @PathVariable String id,
+            @RequestParam("file") MultipartFile file) {
+        try {
+            String originalName = file.getOriginalFilename();
+            if (originalName == null ||
+                    (!originalName.toLowerCase().endsWith(".mp3") &&
+                            !originalName.toLowerCase().endsWith(".mp4") &&
+                            !originalName.toLowerCase().endsWith(".m4a"))) {
+                return ResponseEntity.badRequest()
+                        .body(ApiResponse.error("Seuls les fichiers MP3/MP4/M4A sont acceptés"));
+            }
+
+            String relativePath = fileStorageService.storeForBooking(file, id, "recording");
+            String fileUrl = appBaseUrl + relativePath;
+            bookingService.updateRecording(id, fileUrl);
+
+            return ResponseEntity.ok(ApiResponse.success(fileUrl, "Enregistrement uploadé avec succès"));
+
+        } catch (Exception e) {
+            return ResponseEntity.status(500)
+                    .body(ApiResponse.error("Erreur lors de l'upload : " + e.getMessage()));
+        }
+    }
+    @PostMapping("/{id}/upload-report")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<String>> uploadReport(
+            @PathVariable String id,
+            @RequestParam("file") MultipartFile file) {
+        try {
+            String originalName = file.getOriginalFilename();
+            if (originalName == null || !originalName.toLowerCase().endsWith(".pdf")) {
+                return ResponseEntity.badRequest()
+                        .body(ApiResponse.error("Seuls les fichiers PDF sont acceptés"));
+            }
+
+            String relativePath = fileStorageService.storeForBooking(file, id, "report");
+            String fileUrl = appBaseUrl + relativePath;
+            bookingService.updateReport(id, fileUrl);
+
+            return ResponseEntity.ok(ApiResponse.success(fileUrl, "Rapport uploadé avec succès"));
+
+        } catch (Exception e) {
+            return ResponseEntity.status(500)
+                    .body(ApiResponse.error("Erreur lors de l'upload : " + e.getMessage()));
+        }
     }
 }

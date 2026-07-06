@@ -1,5 +1,7 @@
 package com.yassmine.administration.service;
-
+import org.springframework.web.multipart.MultipartFile;
+import java.io.IOException;
+import java.nio.file.*;
 import com.yassmine.administration.exception.ResourceNotFoundException;
 import com.yassmine.administration.model.Booking;
 import com.yassmine.administration.model.Demande;
@@ -24,7 +26,7 @@ import org.springframework.data.mongodb.core.query.Criteria;
 @Service
 @RequiredArgsConstructor
 public class BookingService {
-
+    private final Path rootLocation = Paths.get("uploads/recordings");
     private final BookingRepository bookingRepository;
     private final UserService userService;
     private final DemandeRepository demandeRepository; // ajouter au constructeur (RequiredArgsConstructor)
@@ -222,5 +224,37 @@ public class BookingService {
             booking.setStatusUpdateDate((String) payload.get("statusUpdateDate"));
         }
         return bookingRepository.save(booking);
+    }
+    public String saveInterviewRecording(String bookingId, MultipartFile file) throws IOException {
+        // 1. Créer le dossier s'il n'existe pas encore sur le serveur
+        if (!Files.exists(rootLocation)) {
+            Files.createDirectories(rootLocation);
+        }
+
+        // 2. Extraire l'extension (.mp3 ou .mp4)
+        String originalName = file.getOriginalFilename();
+        String extension = originalName != null ? originalName.substring(originalName.lastIndexOf(".")) : ".mp3";
+
+        // 3. Générer un nom unique pour éviter d'écraser un fichier existant
+        String uniqueFileName = "recording_" + bookingId + "_" + System.currentTimeMillis() + extension;
+
+        // 4. Copier le fichier dans le dossier de destination
+        Files.copy(file.getInputStream(), this.rootLocation.resolve(uniqueFileName), StandardCopyOption.REPLACE_EXISTING);
+
+        // 5. Retourner l'URL d'accès au fichier
+        // Si tu as un serveur de fichiers ou si ton Spring Boot expose le dossier "uploads", retourne l'URL relative :
+        return "/uploads/recordings/" + uniqueFileName;
+    }
+    public void updateRecording(String bookingId, String recordingUrl) {
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new RuntimeException("Booking non trouvé : " + bookingId));
+        booking.setInterviewRecording(recordingUrl);
+        bookingRepository.save(booking);
+    }
+    public void updateReport(String bookingId, String reportUrl) {
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new RuntimeException("Booking non trouvé : " + bookingId));
+        booking.setInterviewReport(reportUrl);
+        bookingRepository.save(booking);
     }
 }
