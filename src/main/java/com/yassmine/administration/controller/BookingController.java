@@ -176,4 +176,35 @@ public class BookingController {
                     .body(ApiResponse.error("Erreur lors de l'upload : " + e.getMessage()));
         }
     }
+    @PostMapping("/{id}/documents")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<String>> uploadDocument(
+            @PathVariable String id,
+            @RequestParam("file") MultipartFile file,
+            @RequestParam("documentName") String documentName) {
+        try {
+            if (documentName == null || documentName.trim().isEmpty()) {
+                return ResponseEntity.badRequest()
+                        .body(ApiResponse.error("Le nom du document est requis"));
+            }
+
+            String relativePath = fileStorageService.storeForBooking(file, id, "documents");
+            String fileUrl = appBaseUrl + relativePath;
+            bookingService.addDocument(id, documentName.trim(), fileUrl);
+
+            return ResponseEntity.ok(ApiResponse.success(fileUrl, "Document ajouté avec succès"));
+        } catch (Exception e) {
+            return ResponseEntity.status(500)
+                    .body(ApiResponse.error("Erreur : " + e.getMessage()));
+        }
+    }
+
+    @DeleteMapping("/{id}/documents/{documentName}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> deleteDocument(
+            @PathVariable String id,
+            @PathVariable String documentName) {
+        bookingService.removeDocument(id, documentName);
+        return ResponseEntity.ok(ApiResponse.success(null, "Document supprimé"));
+    }
 }

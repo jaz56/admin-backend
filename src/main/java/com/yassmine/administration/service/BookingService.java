@@ -15,11 +15,9 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import java.math.BigDecimal;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.text.SimpleDateFormat;
-import java.util.Date;
+
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Criteria;
@@ -255,6 +253,22 @@ public class BookingService {
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new RuntimeException("Booking non trouvé : " + bookingId));
         booking.setInterviewReport(reportUrl);
+        bookingRepository.save(booking);
+    }
+    public void addDocument(String bookingId, String documentName, String fileUrl) {
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new RuntimeException("Booking non trouvé"));
+        if (booking.getDocuments() == null) booking.setDocuments(new HashMap<>());
+        booking.getDocuments().put(documentName, fileUrl);
+        bookingRepository.save(booking);
+    }
+
+    public void removeDocument(String bookingId, String documentName) {
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new RuntimeException("Booking non trouvé"));
+        if (booking.getDocuments() != null) {
+            booking.getDocuments().remove(documentName);
+        }
         bookingRepository.save(booking);
     }
 }

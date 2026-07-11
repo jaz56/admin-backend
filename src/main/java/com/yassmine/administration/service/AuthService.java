@@ -62,7 +62,7 @@ public class AuthService {
                 .email(request.getEmail())
                 .nom(request.getNom())
                 .prenom(request.getPrenom())
-                .role(request.getRole().toLowerCase())
+            .role(request.getRole().toLowerCase())
                 .password(passwordEncoder.encode(request.getPassword()))
                 .acceptedTerms(request.getAcceptedTerms())
                 .balance(0.0)        // ← CORRIGÉ : Double au lieu de BigDecimal.ZERO

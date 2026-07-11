@@ -38,4 +38,25 @@ public class FileStorageService {
             throw new RuntimeException("Erreur lors de l'upload : " + e.getMessage(), e);
         }
     }
+    public String storeForBooking(MultipartFile file, String bookingId, String type) {
+        try {
+            Path uploadPath = Paths.get(uploadDir, "bookings", bookingId, type);
+            Files.createDirectories(uploadPath);
+
+            String originalName = file.getOriginalFilename();
+            String extension = "";
+            if (originalName != null && originalName.contains(".")) {
+                extension = originalName.substring(originalName.lastIndexOf("."));
+            }
+
+            String filename = type + "_" + System.currentTimeMillis() + extension;
+            Path filePath = uploadPath.resolve(filename);
+            Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+
+            return "/uploads/bookings/" + bookingId + "/" + type + "/" + filename;
+
+        } catch (IOException e) {
+            throw new RuntimeException("Erreur lors de l'upload : " + e.getMessage(), e);
+        }
+    }
 }

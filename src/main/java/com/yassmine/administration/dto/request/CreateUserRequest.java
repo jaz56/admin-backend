@@ -1,8 +1,10 @@
 package com.yassmine.administration.dto.request;
 
+import com.yassmine.administration.model.embedded.NationaliteItem;
 import lombok.Data;
 
 import java.util.List;
+import java.util.Map;
 
 @Data
 public class CreateUserRequest {
@@ -17,7 +19,7 @@ public class CreateUserRequest {
     private PaysRequest pays;         // objet { value, label }
     private String address;
     private String codePostal;
-    private List<String> nationalite;
+    private NationaliteItem nationalite;
     private String dernierePosteOccupe;
     private String fonction;
     private String langueDeProcedure;

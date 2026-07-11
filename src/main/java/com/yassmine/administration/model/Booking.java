@@ -49,9 +49,7 @@ public class Booking {
     private String interviewStatus;   // "En attente", ...
     private String statusUpdateDate;
 
-    @JsonIgnore
     private Map<String, Object> documents = new HashMap<>();
-    @JsonIgnore
     private Map<String, Object> documentsMetadata = new HashMap<>();
 
     @CreatedDate

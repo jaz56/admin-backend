@@ -49,8 +49,7 @@ public class User {
     private Pays pays;
 
     // ── Nationalité — maintenant liste d'objets ────────────────────
-    @Builder.Default
-    private List<Object> nationalite = new ArrayList<>();  // ← CHANGÉ
+    private NationaliteItem nationalite;  // ← CHANGÉ
 
     // ── Médias ─────────────────────────────────────────────────────
     private String photoDeProfile;

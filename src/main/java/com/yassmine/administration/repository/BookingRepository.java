@@ -22,6 +22,9 @@ public interface BookingRepository extends MongoRepository<Booking, String> {
     List<Booking> findByDemandeId(String demandeId);
 
     Optional<Booking> findByUniqueId(String uniqueId);
+
     Page<Booking> findByStatus(String status, Pageable pageable);
 
+    @Query(value = "{ 'demande': ?0 }", exists = true)
+    boolean existsByDemandeId(String demandeId);
 }

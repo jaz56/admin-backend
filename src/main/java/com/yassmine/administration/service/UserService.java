@@ -9,6 +9,7 @@ import com.yassmine.administration.model.Booking;
 import com.yassmine.administration.model.Demande;
 import com.yassmine.administration.model.Order;
 import com.yassmine.administration.model.User;
+import com.yassmine.administration.model.embedded.NationaliteItem;
 import com.yassmine.administration.model.embedded.Pays;
 import com.yassmine.administration.model.embedded.Subscription;
 import com.yassmine.administration.model.embedded.TransactionDetail;
@@ -158,6 +159,7 @@ public class UserService {
             throw new RuntimeException("Cet email est déjà utilisé");
         }
 
+        // ── 1. Gestion du Pays ──
         Pays pays = null;
         if (request.getPays() != null) {
             pays = new Pays();
@@ -165,6 +167,16 @@ public class UserService {
             pays.setLabel(request.getPays().getLabel());
         }
 
+        // ── 2. Gestion de la Nationalité avec ta classe NationaliteItem ──
+        NationaliteItem nationaliteObj = null;
+        if (request.getNationalite() != null) {
+            // Utilisation propre et directe grâce à ta classe
+            nationaliteObj = new NationaliteItem();
+            nationaliteObj.setValue(request.getNationalite().getValue());
+            nationaliteObj.setLabel(request.getNationalite().getLabel());
+        }
+
+        // ── 3. Création du User ──
         User user = User.builder()
                 .email(request.getEmail())
                 .nom(request.getNom())
@@ -176,9 +188,11 @@ public class UserService {
                 .pays(pays)
                 .address(request.getAddress())
                 .codePostal(request.getCodePostal())
-                .nationalite(request.getNationalite() != null
-                        ? new ArrayList<>(request.getNationalite())
-                        : new ArrayList<>())
+
+                // ── MODIFICATION ICI ──
+                .nationalite(nationaliteObj)
+                // ──────────────────────
+
                 .dernierePosteOccupe(request.getDernierePosteOccupe())
                 .fonction(request.getFonction())
                 .langueDeProcedure(request.getLangueDeProcedure())
@@ -196,8 +210,7 @@ public class UserService {
                 .build();
 
         return userRepository.save(user);
-    }
-    private String generateUniqueId() {
+    }    private String generateUniqueId() {
         // Format : YY-MM-JT-U-XXXXXXXXXXXX (comme tes données existantes)
         java.time.LocalDate now = java.time.LocalDate.now();
         String year = String.valueOf(now.getYear()).substring(2);   // "26"

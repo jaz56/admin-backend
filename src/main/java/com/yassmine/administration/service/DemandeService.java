@@ -31,10 +31,11 @@ public class DemandeService {
     private final BookingRepository bookingRepository;
 
 
-
     public Demande getById(String id) {
-        return demandeRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Demande introuvable avec l'id : " + id));
+        Demande demande = demandeRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Demande non trouvée"));
+        System.out.println("✅ Progress récupéré : " + demande.getProgress());
+        return demande;
     }
 
     // UPDATE : Mettre à jour le statut ou la progression (ex: Passer à l'étape suivante)
@@ -90,10 +91,13 @@ public class DemandeService {
 
     public Demande updateDemandeAsAdmin(String id, Demande updated) {
         Demande existing = getById(id);
+
+        // ✅ Sauvegarder l'ANCIEN progress AVANT modification
+        String oldProgress = existing.getProgress();
+
         if (updated.getUserId() != null && !updated.getUserId().isEmpty()) {
             existing.setUserId(updated.getUserId());
         }
-        // Copy editable fields, keep ownership/system fields untouched
         existing.setType(updated.getType());
         existing.setJourneesDestination(updated.getJourneesDestination());
         existing.setPaysResidence(updated.getPaysResidence());
@@ -116,10 +120,18 @@ public class DemandeService {
         existing.setPosteSouhaite(updated.getPosteSouhaite());
         existing.setDiplomes(updated.getDiplomes());
         existing.setConnaissanceLinguistique(updated.getConnaissanceLinguistique());
+        existing.setProgress(updated.getProgress());
+
+        // ✅ Comparer avec oldProgress
+        if (updated.getProgress() != null &&
+                updated.getProgress().contains("STEP_2") &&
+                (oldProgress == null || !oldProgress.contains("STEP_2"))) {
+
+            autoCreateBooking(existing);
+        }
 
         return demandeRepository.save(existing);
-    }
-    public Demande createForUserId(Map<String, Object> payload) {
+    }    public Demande createForUserId(Map<String, Object> payload) {
         String userId = (String) payload.get("user");
 
 
@@ -262,6 +274,11 @@ public class DemandeService {
         Demande existing = demandeRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Demande introuvable : " + id));
 
+        // ✅ Sauvegarder l'ANCIEN progress AVANT tout setProgress
+        String oldProgress = existing.getProgress();
+        System.out.println("🔍 Ancien progress: " + oldProgress);
+        System.out.println("🔍 Nouveau progress: " + updated.getProgress());
+
         existing.setType(updated.getType());
         existing.setJourneesDestination(updated.getJourneesDestination());
         existing.setPaysResidence(updated.getPaysResidence());
@@ -284,12 +301,81 @@ public class DemandeService {
         existing.setPosteSouhaite(updated.getPosteSouhaite());
         existing.setConnaissanceLinguistique(updated.getConnaissanceLinguistique());
         existing.setDiplomes(updated.getDiplomes());
+        existing.setProgress(updated.getProgress());
 
-        // Réattribution candidat si changé
         if (updated.getUserId() != null) {
             existing.setUserId(updated.getUserId());
         }
 
+        // ✅ Comparer avec oldProgress (pas existing.getProgress())
+        if (updated.getProgress() != null &&
+                updated.getProgress().contains("STEP_2") &&
+                (oldProgress == null || !oldProgress.contains("STEP_2"))) {
+
+            System.out.println("✅ Condition STEP_2 remplie — création booking...");
+            autoCreateBooking(existing);
+        } else {
+            System.out.println("❌ Condition NON remplie — old: " + oldProgress + " new: " + updated.getProgress());
+        }
+
         return demandeRepository.save(existing);
+    }   private void autoCreateBooking(Demande demande) {
+        System.out.println("🚀 autoCreateBooking appelé pour demande: " + demande.getId());
+
+        boolean alreadyExists = bookingRepository.existsByDemandeId(demande.getId());
+        System.out.println("📋 Booking existe déjà: " + alreadyExists);
+
+        if (alreadyExists) {
+            System.out.println("⚠️ Booking déjà existant — annulation création");
+            return;
+        }
+
+        try {
+            Booking booking = new Booking();
+            booking.setUserId(demande.getUserId());
+            booking.setDemandeId(demande.getId());
+            booking.setUniqueId(generateNextBookingId());
+            booking.setStatus("pending");
+            booking.setPaymentStatus("pending");
+            booking.setInterviewStatus("En attente");
+            booking.setInterviewCompleted(false);
+            booking.setJourneesDestination(demande.getJourneesDestination());
+            booking.setDocuments(new HashMap<>());
+            booking.setDocumentsMetadata(new HashMap<>());
+
+            // Valeurs par défaut pour les champs obligatoires
+            booking.setAppointmentType("standard");
+            booking.setPrice(0.0);
+            booking.setAppointmentTime("09:00");
+            booking.setAppointmentDate(java.time.LocalDateTime.now().plusDays(7));
+
+            Booking saved = bookingRepository.save(booking);
+            System.out.println("✅ Booking créé avec ID: " + saved.getId());
+
+        } catch (Exception e) {
+            System.out.println("❌ Erreur création booking: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    private String generateNextBookingId() {
+        Query query = new Query(Criteria.where("uniqueId").regex("^BK\\d+$"));
+        query.fields().include("uniqueId");
+
+        List<Booking> bookings = mongoTemplate.find(query, Booking.class);
+
+        int maxId = 0;
+        for (Booking b : bookings) {
+            String uid = b.getUniqueId();
+            if (uid != null && uid.matches("^BK\\d+$")) {
+                try {
+                    int num = Integer.parseInt(uid.substring(2));
+                    if (num > maxId) maxId = num;
+                } catch (NumberFormatException ignored) {}
+            }
+        }
+
+        int nextId = maxId + 1;
+        return String.format("BK%06d", nextId);
     }
 }
