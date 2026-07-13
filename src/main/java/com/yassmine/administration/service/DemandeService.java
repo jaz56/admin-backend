@@ -69,6 +69,9 @@ public class DemandeService {
                             .journeesDestination(demande.getJourneesDestination())
                             .niveauEtude(demande.getNiveauEtude())
                             .createdAt(demande.getCreatedAt())
+                            .progress(demande.getProgress())
+                            .paysResidence(demande.getPaysResidence())
+                            .fonction(demande.getFonction())
                             .build();
 
             // Si la demande contient un userId, on récupère l'User via le userService
@@ -78,11 +81,17 @@ public class DemandeService {
                     if (user != null) {
                         dto.setCandidatNom(user.getNom());
                         dto.setCandidatPrenom(user.getPrenom());
+                        dto.setCandidatEmail(user.getEmail());        // ← ajouter
+                        dto.setCandidatTel(user.getNumeroTel());      // ← ajouter
+                        dto.setCandidatUniqueId(user.getUniqueId());  // ← ajouter
                     }
                 } catch (Exception e) {
                     // Si l'utilisateur n'est pas trouvé (ex: supprimé), on laisse nom/prénom à null
                     dto.setCandidatNom(null);
                     dto.setCandidatPrenom(null);
+                    dto.setCandidatEmail(null);        // ← ajouter
+                    dto.setCandidatTel(null);          // ← ajouter
+                    dto.setCandidatUniqueId(null);     // ← ajouter
                 }
             }
             return dto;
@@ -243,6 +252,10 @@ public class DemandeService {
                     .journeesDestination(demande.getJourneesDestination())
                     .niveauEtude(demande.getNiveauEtude())
                     .createdAt(demande.getCreatedAt())
+            // À ajouter dans la méthode de filtrage/recherche de votre DemandeService.java :
+                    .progress(demande.getProgress())
+                    .paysResidence(demande.getPaysResidence())
+                    .fonction(demande.getFonction())
                     .build();
 
             if (demande.getUserId() != null) {
@@ -251,6 +264,9 @@ public class DemandeService {
                     if (user != null) {
                         dto.setCandidatNom(user.getNom());
                         dto.setCandidatPrenom(user.getPrenom());
+                        dto.setCandidatEmail(user.getEmail());        // ← ajouter
+                        dto.setCandidatTel(user.getNumeroTel());      // ← ajouter
+                        dto.setCandidatUniqueId(user.getUniqueId());  // ← ajouter
                     }
                 } catch (Exception ignored) {}
             }

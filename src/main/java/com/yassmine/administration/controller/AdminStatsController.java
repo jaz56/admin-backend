@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -19,8 +20,11 @@ public class AdminStatsController {
 
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<DashboardStatsDTO>> getDashboardStats() {
-        DashboardStatsDTO stats = adminStatsService.getGlobalStats();
-        return ResponseEntity.ok(ApiResponse.success(stats, "Statistiques du dashboard récupérées"));
+    public ResponseEntity<ApiResponse<DashboardStatsDTO>> getDashboardStats(@RequestParam(name = "year", required = false) Integer year) {
+        // Par défaut, si aucune année n'est envoyée, on prend l'année en cours (2026)
+        int selectedYear = (year != null) ? year : java.time.Year.now().getValue();
+
+        DashboardStatsDTO stats = adminStatsService.getGlobalStats(selectedYear);
+        return ResponseEntity.ok(ApiResponse.success(stats, "Statistiques récupérées pour l'année " + selectedYear));
     }
 }
