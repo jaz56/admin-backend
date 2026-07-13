@@ -41,18 +41,21 @@ pipeline {
        }
 
        stage('🔍 Analyse SonarQube') {
-           steps {
-               echo '=== Analyse qualité du code ==='
-               withSonarQubeEnv('SonarQube') {
-                   sh """
-                       mvn sonar:sonar \
-                           -Dsonar.projectKey=Admin-Backend \
-                           -Dsonar.host.url=http://sonarqube:9000 \
-                           -Dsonar.token=${SONAR_TOKEN}
-                   """
-               }
-           }
-       }
+                  steps {
+                      echo '=== Analyse qualité du code ==='
+                      withSonarQubeEnv('SonarQube') {
+                          // 1. On utilise les simples guillemets (''') pour éviter l'avertissement de sécurité de Jenkins
+                          // 2. On limite la mémoire allouée au scanner SonarQube avec MAVEN_OPTS
+                          sh '''
+                              export MAVEN_OPTS="-Xmx512m -XX:MaxMetaspaceSize=256m"
+                              mvn sonar:sonar \
+                                  -Dsonar.projectKey=Admin-Backend \
+                                  -Dsonar.host.url=http://sonarqube:9000 \
+                                  -Dsonar.token=$SONAR_TOKEN
+                          '''
+                      }
+                  }
+              }
 
 
 
