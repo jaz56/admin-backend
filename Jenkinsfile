@@ -7,7 +7,8 @@ pipeline {
 
     environment {
         SONAR_TOKEN = credentials('sonar-token')
-        DOCKER_IMAGE_BACKEND = 'admin-backend'
+        DOCKER_HUB_USER = 'yassmine0806'
+        DOCKER_IMAGE_BACKEND = "${DOCKER_HUB_USER}/admin-backend"
         DOCKER_TAG = "${BUILD_NUMBER}"
     }
 
@@ -66,43 +67,55 @@ pipeline {
                 }
             }
         }
+        stage('🐳 Build & Push Docker Image') {
+                    steps {
+                        echo '=== Construction et Push vers Docker Hub ==='
 
-        stage('🐳 Build Docker Image') {
-            steps {
-                echo '=== Construction de l image Docker ==='
-                sh """
-                    docker build -t ${DOCKER_IMAGE_BACKEND}:${DOCKER_TAG} .
-                    docker tag ${DOCKER_IMAGE_BACKEND}:${DOCKER_TAG} ${DOCKER_IMAGE_BACKEND}:latest
-                """
-            }
-        }
+                        // On récupère les identifiants Docker Hub configurés dans Jenkins
+                        withCredentials([usernamePassword(credentialsId: 'docker-hub-credentials', passwordVariable: 'DOCKER_PASSWORD', usernameVariable: 'DOCKER_USERNAME')]) {
+                            sh """
+                                # 1. Connexion sécurisée à Docker Hub
+                                echo "\${DOCKER_PASSWORD}" | docker login -u "\${DOCKER_USERNAME}" --password-stdin
 
-       stage('🚀 Déploiement') {
-           steps {
-               echo '=== Déploiement avec Docker ==='
-               sh '''
-                   docker stop admin_backend || true
-                   docker rm admin_backend || true
-                   docker run -d \
-                       --name admin_backend \
-                       --network administration_default \
-                       -p 8083:8083 \
-                       -v admin_uploads:/app/uploads \
-                       -e SPRING_DATA_MONGODB_URI="mongodb://adminUser:08062003@admin_mongodb:27017/admin_db?authSource=admin" \
-                       -e JWT_SECRET="Y2Q4OWI0M2VlZjZkNTk3YjRlZGNhYzc2MjhkYjhmZTU0ZDVhMzE0ZTJiMjc4NmViNDFiYWVjODNiNmEyZWY5YQ==" \
-                       -e JWT_EXPIRATION="86400000" \
-                       -e SERVER_PORT="8083" \
-                       -e FILE_UPLOAD_DIR="/app/uploads" \
-                       -e APP_BASE_URL="http://localhost:8083" \
-                       -e SPRING_SERVLET_MULTIPART_MAX_FILE_SIZE="50MB" \
-                       -e SPRING_SERVLET_MULTIPART_MAX_REQUEST_SIZE="50MB" \
-                       -e SERVER_TOMCAT_MAX_SWALLOW_SIZE="50MB" \
-                       --restart unless-stopped \
-                       admin-backend:latest
-               '''
-           }
-       }
-    }
+                                # 2. Construction de l'image avec votre préfixe Docker Hub
+                                docker build -t ${DOCKER_IMAGE_BACKEND}:${DOCKER_TAG} .
+                                docker tag ${DOCKER_IMAGE_BACKEND}:${DOCKER_TAG} ${DOCKER_IMAGE_BACKEND}:latest
+
+                                # 3. Envoi (Push) vers Docker Hub
+                                docker push ${DOCKER_IMAGE_BACKEND}:${DOCKER_TAG}
+                                docker push ${DOCKER_IMAGE_BACKEND}:latest
+                            """
+                        }
+                    }
+                }
+
+      stage('🚀 Déploiement') {
+                  steps {
+                      echo '=== Déploiement avec Docker ==='
+                      // Remarquez que l'on utilise ${DOCKER_IMAGE_BACKEND} à la fin au lieu de "admin-backend:latest"
+                      sh """
+                          docker stop admin_backend || true
+                          docker rm admin_backend || true
+                          docker run -d \
+                              --name admin_backend \
+                              --network administration_default \
+                              -p 8083:8083 \
+                              -v admin_uploads:/app/uploads \
+                              -e SPRING_DATA_MONGODB_URI="mongodb://adminUser:08062003@admin_mongodb:27017/admin_db?authSource=admin" \
+                              -e JWT_SECRET="Y2Q4OWI0M2VlZjZkNTk3YjRlZGNhYzc2MjhkYjhmZTU0ZDVhMzE0ZTJiMjc4NmViNDFiYWVjODNiNmEyZWY5YQ==" \
+                              -e JWT_EXPIRATION="86400000" \
+                              -e SERVER_PORT="8083" \
+                              -e FILE_UPLOAD_DIR="/app/uploads" \
+                              -e APP_BASE_URL="http://localhost:8083" \
+                              -e SPRING_SERVLET_MULTIPART_MAX_FILE_SIZE="50MB" \
+                              -e SPRING_SERVLET_MULTIPART_MAX_REQUEST_SIZE="50MB" \
+                              -e SERVER_TOMCAT_MAX_SWALLOW_SIZE="50MB" \
+                              --restart unless-stopped \
+                              ${DOCKER_IMAGE_BACKEND}:latest
+                      """
+                  }
+              }
+          }
 
     post {
         success {
