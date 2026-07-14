@@ -140,7 +140,8 @@ public class DemandeService {
         }
 
         return demandeRepository.save(existing);
-    }    public Demande createForUserId(Map<String, Object> payload) {
+    }
+    public Demande createForUserId(Map<String, Object> payload) {
         String userId = (String) payload.get("user");
 
 
@@ -196,7 +197,9 @@ public class DemandeService {
             String condidatStatutActuel, String fonction, String posteSouhaite,
             String nombreAnneesExperience, String paysResidence,
             Boolean besoinVisa, Boolean existenceDeGarant, Boolean typeHebergement,
-            Boolean preinscription, Boolean handicape, Pageable pageable) {
+            Boolean preinscription, Boolean handicape,
+            String progress, // ◄ 1. AJOUT DU PARAMÈTRE ICI
+            Pageable pageable) {
 
         List<Criteria> criteriaList = new ArrayList<>();
 
@@ -213,7 +216,11 @@ public class DemandeService {
         if (nombreAnneesExperience != null && !nombreAnneesExperience.isEmpty())
             criteriaList.add(Criteria.where("nombreAnneesExperience").is(nombreAnneesExperience));
 
-        // ✅ Ces trois champs sont dans la Demande → Criteria MongoDB direct
+        // ◄ 2. AJOUT DE LA CONDITION DE FILTRAGE MONGO DB ICI
+        if (progress != null && !progress.trim().isEmpty()) {
+            criteriaList.add(Criteria.where("progress").is(progress.trim()));
+        }
+
         if (fonction != null && !fonction.trim().isEmpty())
             criteriaList.add(Criteria.where("fonction").regex(fonction.trim(), "i"));
         if (posteSouhaite != null && !posteSouhaite.trim().isEmpty())
@@ -237,12 +244,10 @@ public class DemandeService {
             query.addCriteria(new Criteria().andOperator(criteriaList.toArray(new Criteria[0])));
         query.with(Sort.by(Sort.Direction.DESC, "createdAt"));
 
-        // ✅ Pagination directe MongoDB — plus besoin de fetch-tout
         long total = mongoTemplate.count(query, Demande.class);
         query.with(pageable);
         List<Demande> demandes = mongoTemplate.find(query, Demande.class);
 
-        // Enrichissement avec nom/prénom du candidat
         List<DemandeResponseDTO> dtos = demandes.stream().map(demande -> {
             DemandeResponseDTO dto = DemandeResponseDTO.builder()
                     .id(demande.getId())
@@ -252,7 +257,6 @@ public class DemandeService {
                     .journeesDestination(demande.getJourneesDestination())
                     .niveauEtude(demande.getNiveauEtude())
                     .createdAt(demande.getCreatedAt())
-            // À ajouter dans la méthode de filtrage/recherche de votre DemandeService.java :
                     .progress(demande.getProgress())
                     .paysResidence(demande.getPaysResidence())
                     .fonction(demande.getFonction())
@@ -264,9 +268,9 @@ public class DemandeService {
                     if (user != null) {
                         dto.setCandidatNom(user.getNom());
                         dto.setCandidatPrenom(user.getPrenom());
-                        dto.setCandidatEmail(user.getEmail());        // ← ajouter
-                        dto.setCandidatTel(user.getNumeroTel());      // ← ajouter
-                        dto.setCandidatUniqueId(user.getUniqueId());  // ← ajouter
+                        dto.setCandidatEmail(user.getEmail());
+                        dto.setCandidatTel(user.getNumeroTel());
+                        dto.setCandidatUniqueId(user.getUniqueId());
                     }
                 } catch (Exception ignored) {}
             }
@@ -335,7 +339,8 @@ public class DemandeService {
         }
 
         return demandeRepository.save(existing);
-    }   private void autoCreateBooking(Demande demande) {
+    }
+    private void autoCreateBooking(Demande demande) {
         System.out.println("🚀 autoCreateBooking appelé pour demande: " + demande.getId());
 
         boolean alreadyExists = bookingRepository.existsByDemandeId(demande.getId());

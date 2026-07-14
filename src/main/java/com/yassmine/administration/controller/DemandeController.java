@@ -55,6 +55,7 @@ public class DemandeController {
             @RequestParam(required = false) Boolean typeHebergement,
             @RequestParam(required = false) Boolean preinscription,
             @RequestParam(required = false) Boolean handicape,
+            @RequestParam(required = false) String progress,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int limit) {
 
@@ -65,7 +66,7 @@ public class DemandeController {
                 condidatStatutActuel, fonction, posteSouhaite,
                 nombreAnneesExperience, paysResidence,
                 besoinVisa, existenceDeGarant, typeHebergement,
-                preinscription, handicape, pageable);
+                preinscription, handicape, progress, pageable);
 
         Map<String, Object> response = new HashMap<>();
         response.put("data", result.getContent());
