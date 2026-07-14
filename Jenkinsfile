@@ -12,14 +12,7 @@ pipeline {
         DOCKER_TAG = "${BUILD_NUMBER}"
     }
 
-    stages {
 
-        stage('📥 Checkout') {
-            steps {
-                echo '=== Récupération du code source ==='
-                checkout scm
-            }
-        }
 
         stage('📦 Installation des dépendances') {
             steps {
