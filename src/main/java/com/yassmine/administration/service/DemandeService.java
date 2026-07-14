@@ -327,11 +327,11 @@ public class DemandeService {
             existing.setUserId(updated.getUserId());
         }
 
-        // ✅ Comparer avec oldProgress (pas existing.getProgress())
-        if (updated.getProgress() != null &&
-                updated.getProgress().contains("STEP_2") &&
-                (oldProgress == null || !oldProgress.contains("STEP_2"))) {
+        // 🔥 CORRECTION ICI : Utilisation de toUpperCase() pour sécuriser la vérification
+        String newProgressUpper = updated.getProgress() != null ? updated.getProgress().toUpperCase() : "";
+        String oldProgressUpper = oldProgress != null ? oldProgress.toUpperCase() : "";
 
+        if (newProgressUpper.contains("STEP_2") && !oldProgressUpper.contains("STEP_2")) {
             System.out.println("✅ Condition STEP_2 remplie — création booking...");
             autoCreateBooking(existing);
         } else {
@@ -339,23 +339,20 @@ public class DemandeService {
         }
 
         return demandeRepository.save(existing);
-    }
-    private void autoCreateBooking(Demande demande) {
+    }    private void autoCreateBooking(Demande demande) {
         System.out.println("🚀 autoCreateBooking appelé pour demande: " + demande.getId());
 
+        // ℹ️ On compte ou on vérifie s'il y en a déjà, mais ON NE BLOQUE PLUS avec un "return"
         boolean alreadyExists = bookingRepository.existsByDemandeId(demande.getId());
-        System.out.println("📋 Booking existe déjà: " + alreadyExists);
-
         if (alreadyExists) {
-            System.out.println("⚠️ Booking déjà existant — annulation création");
-            return;
+            System.out.println("📋 Note : Cette demande possède déjà au moins un booking. Un nouveau va être ajouté.");
         }
 
         try {
             Booking booking = new Booking();
             booking.setUserId(demande.getUserId());
             booking.setDemandeId(demande.getId());
-            booking.setUniqueId(generateNextBookingId());
+            booking.setUniqueId(generateNextBookingId()); // Génère proprement le BK00000X suivant
             booking.setStatus("pending");
             booking.setPaymentStatus("pending");
             booking.setInterviewStatus("En attente");
@@ -365,20 +362,19 @@ public class DemandeService {
             booking.setDocumentsMetadata(new HashMap<>());
 
             // Valeurs par défaut pour les champs obligatoires
-            booking.setAppointmentType("standard");
+            booking.setAppointmentType("simple");
             booking.setPrice(0.0);
             booking.setAppointmentTime("09:00");
             booking.setAppointmentDate(java.time.LocalDateTime.now().plusDays(7));
 
             Booking saved = bookingRepository.save(booking);
-            System.out.println("✅ Booking créé avec ID: " + saved.getId());
+            System.out.println("✅ Nouveau Booking créé avec succès ! ID: " + saved.getId() + " | UniqueID: " + saved.getUniqueId());
 
         } catch (Exception e) {
-            System.out.println("❌ Erreur création booking: " + e.getMessage());
+            System.out.println("❌ Erreur lors de la création automatique du booking: " + e.getMessage());
             e.printStackTrace();
         }
     }
-
     private String generateNextBookingId() {
         Query query = new Query(Criteria.where("uniqueId").regex("^BK\\d+$"));
         query.fields().include("uniqueId");
