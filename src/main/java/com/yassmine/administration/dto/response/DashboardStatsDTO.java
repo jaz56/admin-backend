@@ -25,5 +25,10 @@ public class DashboardStatsDTO {
     private Map<String, Long> usersByStatus;     // ex: ADMIN, CANDIDAT
     private Map<String, Long> bookingsByStatus; // ex: CONFIRMED, PENDING, CANCELLED
     private Map<String, Long> ordersByStatus;   // ex: PAID, UNPAID (basé sur le PaymentStatus)
-
+    private Map<String, Long> interviewsByStatus;
+    private Map<String, Long> demandesParDestination;
+    private Map<String, Long> entretiensParDestination;
+    private double avgProfileCompletion;
+    private long totalVerifiedCandidates;
+    private Map<String, Long> structureExperience;
 }

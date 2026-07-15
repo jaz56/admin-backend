@@ -1,11 +1,14 @@
 package com.yassmine.administration.repository;
 
 import com.yassmine.administration.model.Booking;
+import com.yassmine.administration.model.Demande;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.data.mongodb.repository.Query;
 import org.springframework.stereotype.Repository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
@@ -27,4 +30,6 @@ public interface BookingRepository extends MongoRepository<Booking, String> {
 
     @Query(value = "{ 'demande': ?0 }", exists = true)
     boolean existsByDemandeId(String demandeId);
+    // Exemple pour DemandeRepository (Faire de même pour UserRepository et BookingRepository)
+    List<Booking> findAllByCreatedAtBetween(Instant start, Instant end);
 }

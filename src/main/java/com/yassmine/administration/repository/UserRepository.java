@@ -1,10 +1,13 @@
 package com.yassmine.administration.repository;
 
+import com.yassmine.administration.model.Demande;
 import com.yassmine.administration.model.User;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
@@ -16,4 +19,6 @@ public interface UserRepository extends MongoRepository<User, String> {
     List<User> findByRole(String role);
     List<User> findByCandidateVerificationStatus(String status);
     Page<User> findByRole(String role, Pageable pageable);
+    // Exemple pour DemandeRepository (Faire de même pour UserRepository et BookingRepository)
+    List<User> findAllByCreatedAtBetween(Instant start, Instant end);
 }
