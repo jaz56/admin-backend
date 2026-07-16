@@ -38,3 +38,8 @@ Thumbs.db
 # Docker
 .env
 docker-compose.override.yml
+
+# Uploads utilisateurs — CIN, photos, documents personnels (données sensibles/PII)
+# Persisté uniquement via le volume Docker nommé admin_uploads, jamais dans le dépôt Git
+/uploads/
+uploads/
