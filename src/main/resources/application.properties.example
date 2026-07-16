@@ -1,0 +1,25 @@
+spring.application.name=administration
+
+# URI MongoDB ? utilise le nom du service Docker
+spring.data.mongodb.uri=mongodb://adminUser:08062003@mongodb:27017/admin_db?authSource=admin
+
+logging.level.org.springframework.data.mongodb.core.MongoTemplate=DEBUG
+
+jwt.secret=Y2Q4OWI0M2VlZjZkNTk3YjRlZGNhYzc2MjhkYjhmZTU0ZDVhMzE0ZTJiMjc4NmViNDFiYWVjODNiNmEyZWY5YQ==
+jwt.expiration=86400000
+server.port=8083
+
+# Chemin uploads ? /app/uploads dans le conteneur
+file.upload-dir=/app/uploads
+app.base-url=http://localhost:8083
+
+spring.mail.host=smtp.gmail.com
+spring.mail.port=587
+spring.mail.username=${MAIL_USERNAME}
+spring.mail.password=${MAIL_PASSWORD}
+spring.mail.properties.mail.smtp.auth=true
+spring.mail.properties.mail.smtp.starttls.enable=true
+spring.mail.properties.mail.smtp.connectiontimeout=5000
+spring.mail.properties.mail.smtp.timeout=5000
+spring.mail.properties.mail.smtp.writetimeout=5000
+app.frontend-url=http://localhost:4200
