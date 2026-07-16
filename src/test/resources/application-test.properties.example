@@ -1,6 +1,23 @@
-spring.data.mongodb.uri=mongodb://adminUser:08062003@admin_mongodb:27017/administration?authSource=admin
-spring.data.mongodb.database=administration
+# ─────────────────────────────────────────────────────────────
+# Configuration utilisée UNIQUEMENT pour les tests automatisés
+# (mvn test -Dspring.profiles.active=test), exécutés notamment
+# dans Jenkins où le hostname MongoDB est celui du conteneur
+# (admin_mongodb), pas localhost.
+#
+# INSTRUCTIONS :
+# 1. Copier ce fichier vers application-test.properties (même dossier)
+# 2. application-test.properties est ignoré par Git — jamais poussé
+# 3. Utiliser si possible un utilisateur/mot de passe MongoDB DÉDIÉ
+#    aux tests, différent de celui de production — pour qu'une fuite
+#    éventuelle de cette config de test n'expose pas la base réelle.
+# ─────────────────────────────────────────────────────────────
+
+spring.data.mongodb.uri=mongodb://<test_user>:<test_password>@admin_mongodb:27017/administration_test?authSource=admin
+spring.data.mongodb.database=administration_test
+
 app.base-url=http://localhost:8083
 file.upload-dir=/tmp/uploads
+
+# Secret JWT dédié aux tests uniquement — ne doit jamais être réutilisé en production
 jwt.secret=test-secret-key-minimum-256-bits-for-jenkins-testing-only
 jwt.expiration=86400000
