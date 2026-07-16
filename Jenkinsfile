@@ -10,6 +10,11 @@ pipeline {
         DOCKER_HUB_USER = 'yassmine0806'
         DOCKER_IMAGE_BACKEND = "${DOCKER_HUB_USER}/admin-backend"
         DOCKER_TAG = "${BUILD_NUMBER}"
+        // 🟢 NOUVEAU : secrets de déploiement, stockés dans Jenkins Credentials — plus jamais en clair ici
+        MONGODB_URI  = credentials('backend-mongodb-uri')      // Secret text : mongodb://adminUser:***@admin_mongodb:27017/admin_db?authSource=admin
+        JWT_SECRET   = credentials('backend-jwt-secret')       // Secret text
+        MAIL_USERNAME = credentials('backend-mail-username')   // Secret text
+        MAIL_PASSWORD = credentials('backend-mail-password')   // Secret text
     }
 
     stages {
@@ -25,6 +30,18 @@ pipeline {
             steps {
                 echo '=== Installation Maven ==='
                 sh 'mvn dependency:resolve'
+            }
+        }
+
+        // 🟢 NOUVEAU : injecte le fichier de config de test depuis les Jenkins Credentials
+        // (Secret file), puisque application-test.properties n'est plus versionné dans Git
+        // (il contient des identifiants MongoDB — voir .gitignore).
+        stage('🔐 Préparer la config de test') {
+            steps {
+                echo '=== Injection de application-test.properties depuis Jenkins Credentials ==='
+                withCredentials([file(credentialsId: 'backend-application-test-properties', variable: 'TEST_PROPS_FILE')]) {
+                    sh 'cp "$TEST_PROPS_FILE" src/test/resources/application-test.properties'
+                }
             }
         }
 
@@ -95,7 +112,8 @@ pipeline {
       stage('🚀 Déploiement') {
                   steps {
                       echo '=== Déploiement avec Docker ==='
-                      // Remarquez que l'on utilise ${DOCKER_IMAGE_BACKEND} à la fin au lieu de "admin-backend:latest"
+                      // 🟢 CORRIGÉ : plus aucune valeur secrète en clair — tout vient de environment{}
+                      // ci-dessus, lui-même alimenté par les Jenkins Credentials.
                       sh """
                           docker stop admin_backend || true
                           docker rm admin_backend || true
@@ -104,15 +122,18 @@ pipeline {
                               --network administration_default \
                               -p 8083:8083 \
                               -v admin_uploads:/app/uploads \
-                              -e SPRING_DATA_MONGODB_URI="mongodb://adminUser:08062003@admin_mongodb:27017/admin_db?authSource=admin" \
-                              -e JWT_SECRET="Y2Q4OWI0M2VlZjZkNTk3YjRlZGNhYzc2MjhkYjhmZTU0ZDVhMzE0ZTJiMjc4NmViNDFiYWVjODNiNmEyZWY5YQ==" \
+                              -e SPRING_DATA_MONGODB_URI="${MONGODB_URI}" \
+                              -e JWT_SECRET="${JWT_SECRET}" \
                               -e JWT_EXPIRATION="86400000" \
                               -e SERVER_PORT="8083" \
                               -e FILE_UPLOAD_DIR="/app/uploads" \
                               -e APP_BASE_URL="http://localhost:8083" \
+                              -e APP_FRONTEND_URL="http://localhost:4200" \
                               -e SPRING_SERVLET_MULTIPART_MAX_FILE_SIZE="50MB" \
                               -e SPRING_SERVLET_MULTIPART_MAX_REQUEST_SIZE="50MB" \
                               -e SERVER_TOMCAT_MAX_SWALLOW_SIZE="50MB" \
+                              -e MAIL_USERNAME="${MAIL_USERNAME}" \
+                              -e MAIL_PASSWORD="${MAIL_PASSWORD}" \
                               --restart unless-stopped \
                               ${DOCKER_IMAGE_BACKEND}:latest
                       """
