@@ -50,55 +50,85 @@ public class OrderService {
         return orderRepository.findAll(pageable);
     }
 
-        public Order createForBooking(String bookingId, Map<String, Object> payload) {
-            Booking booking = bookingRepository.findById(bookingId)
-                    .orElseThrow(() -> new ResourceNotFoundException("Booking introuvable"));
+    public Order createForBooking(String bookingId, Map<String, Object> payload) {
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new ResourceNotFoundException("Booking introuvable"));
 
-            // ── CONTRAINTE ──
-            if (!"confirmed".equalsIgnoreCase(booking.getStatus())) {
-                throw new RuntimeException(
-                        "Impossible de créer une commande : le booking doit être au statut 'confirmed' (statut actuel : "
-                                + booking.getStatus() + ")"
-                );
-            }
-            if (!"paid".equalsIgnoreCase(booking.getPaymentStatus())) {
-                throw new RuntimeException(
-                        "Impossible de créer une commande : le paiement du booking doit être 'paid' (statut actuel : "
-                                + booking.getPaymentStatus() + ")"
-                );
-            }
-
-            Order order = new Order();
-            order.setOrderId(UUID.randomUUID().toString());
-            order.setUserId(booking.getUserId());
-            order.setBookingId(booking.getUniqueId());
-            order.setType(booking.getAppointmentType());
-            order.setStatus((String) payload.getOrDefault("status", "created"));
-            order.setCurrency((String) payload.getOrDefault("currency", "TND"));
-            order.setCountry((String) payload.getOrDefault("country", ""));
-
-            Object priceObj = payload.get("price");
-            if (priceObj instanceof Number) {
-                order.setPrice(((Number) priceObj).doubleValue());
-            } else if (booking.getPrice() != null) {
-                order.setPrice(booking.getPrice());
-            }
-
-            LocalDate now = LocalDate.now();
-            LocalTime time = LocalTime.now();
-            order.setDate((String) payload.getOrDefault("date", now.format(DateTimeFormatter.ISO_LOCAL_DATE)));
-            order.setTime((String) payload.getOrDefault("time", time.format(DateTimeFormatter.ofPattern("HH:mm:ss"))));
-
-            return orderRepository.save(order);
+        // ── CONTRAINTE ──
+        if (!"confirmed".equalsIgnoreCase(booking.getStatus())) {
+            throw new RuntimeException(
+                    "Impossible de créer une commande : le booking doit être au statut 'confirmed' (statut actuel : "
+                            + booking.getStatus() + ")"
+            );
+        }
+        if (!"paid".equalsIgnoreCase(booking.getPaymentStatus())) {
+            throw new RuntimeException(
+                    "Impossible de créer une commande : le paiement du booking doit être 'paid' (statut actuel : "
+                            + booking.getPaymentStatus() + ")"
+            );
         }
 
-        public List<Order> getByBookingId(String bookingUniqueId) {
-            return orderRepository.findByBookingId(bookingUniqueId);
+        Order order = new Order();
+        order.setOrderId(UUID.randomUUID().toString());
+        order.setUserId(booking.getUserId());
+        order.setBookingId(booking.getUniqueId());
+        order.setType(booking.getAppointmentType());
+        order.setStatus((String) payload.getOrDefault("status", "created"));
+        order.setCurrency((String) payload.getOrDefault("currency", "TND"));
+        order.setCountry((String) payload.getOrDefault("country", ""));
+
+        Object priceObj = payload.get("price");
+        if (priceObj instanceof Number) {
+            order.setPrice(((Number) priceObj).doubleValue());
+        } else if (booking.getPrice() != null) {
+            order.setPrice(booking.getPrice());
         }
+
+        LocalDate now = LocalDate.now();
+        LocalTime time = LocalTime.now();
+        order.setDate((String) payload.getOrDefault("date", now.format(DateTimeFormatter.ISO_LOCAL_DATE)));
+        order.setTime((String) payload.getOrDefault("time", time.format(DateTimeFormatter.ofPattern("HH:mm:ss"))));
+
+        return orderRepository.save(order);
+    }
+
+    public List<Order> getByBookingId(String bookingUniqueId) {
+        return orderRepository.findByBookingId(bookingUniqueId);
+    }
     public Order updateStatus(String id, String status) {
         Order order = orderRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Order introuvable avec l'id : " + id));
         order.setStatus(status);
+        return orderRepository.save(order);
+    }
+
+    // 🟢 NOUVEAU : modification complète d'une commande (prix, devise, pays, date, heure, statut)
+    // Seuls les champs présents dans le payload sont modifiés — les autres restent inchangés.
+    public Order updateOrder(String id, Map<String, Object> payload) {
+        Order order = orderRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Order introuvable avec l'id : " + id));
+
+        if (payload.containsKey("status") && payload.get("status") != null) {
+            order.setStatus((String) payload.get("status"));
+        }
+        if (payload.containsKey("currency") && payload.get("currency") != null) {
+            order.setCurrency((String) payload.get("currency"));
+        }
+        if (payload.containsKey("country") && payload.get("country") != null) {
+            order.setCountry((String) payload.get("country"));
+        }
+        if (payload.containsKey("date") && payload.get("date") != null) {
+            order.setDate((String) payload.get("date"));
+        }
+        if (payload.containsKey("time") && payload.get("time") != null) {
+            order.setTime((String) payload.get("time"));
+        }
+
+        Object priceObj = payload.get("price");
+        if (priceObj instanceof Number) {
+            order.setPrice(((Number) priceObj).doubleValue());
+        }
+
         return orderRepository.save(order);
     }
 

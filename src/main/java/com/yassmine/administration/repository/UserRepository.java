@@ -21,4 +21,5 @@ public interface UserRepository extends MongoRepository<User, String> {
     Page<User> findByRole(String role, Pageable pageable);
     // Exemple pour DemandeRepository (Faire de même pour UserRepository et BookingRepository)
     List<User> findAllByCreatedAtBetween(Instant start, Instant end);
+    List<User> findByRoleAndIsSuperAdminFalse(String role);
 }

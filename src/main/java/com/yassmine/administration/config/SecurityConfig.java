@@ -2,6 +2,7 @@ package com.yassmine.administration.config;
 
 import com.yassmine.administration.security.JwtAuthEntryPoint;
 import com.yassmine.administration.security.JwtAuthFilter;
+import com.yassmine.administration.security.AdminPermissionFilter; // 🟢 IMPORT DU NOUVEAU FILTRE
 import com.yassmine.administration.security.UserDetailsServiceImpl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -30,6 +31,7 @@ import java.util.List;
 public class SecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
+    private final AdminPermissionFilter adminPermissionFilter; // 🟢 INJECTION DE VOTRE FILTRE
     private final UserDetailsServiceImpl userDetailsService;
     private final JwtAuthEntryPoint jwtAuthEntryPoint;
 
@@ -52,12 +54,12 @@ public class SecurityConfig {
                         // Routes admin
                         .requestMatchers("/api/admin/**").hasAnyAuthority("ADMIN", "ROLE_ADMIN", "admin", "ROLE_admin")
 
-                        // Routes candidat (ajout des minuscules "candidat" et "ROLE_candidat")
+                        // Routes candidat
                         .requestMatchers("/api/users/**").hasAnyAuthority("ADMIN", "ROLE_ADMIN", "admin", "ROLE_admin", "CANDIDAT", "ROLE_CANDIDAT", "candidat", "ROLE_candidat")
                         .requestMatchers("/api/bookings/**").hasAnyAuthority("ADMIN", "ROLE_ADMIN", "admin", "ROLE_admin", "CANDIDAT", "ROLE_CANDIDAT", "candidat", "ROLE_candidat")
                         .requestMatchers("/api/demandes/**").hasAnyAuthority("ADMIN", "ROLE_ADMIN", "admin", "ROLE_admin", "CANDIDAT", "ROLE_CANDIDAT", "candidat", "ROLE_candidat")
                         .requestMatchers("/api/orders/**").hasAnyAuthority("ADMIN", "ROLE_ADMIN", "admin", "ROLE_admin", "CANDIDAT", "ROLE_CANDIDAT", "candidat", "ROLE_candidat")
-                        .requestMatchers("/uploads/**").permitAll()   // ← AJOUTE CETTE LIGNE
+                        .requestMatchers("/uploads/**").permitAll()
                         .requestMatchers("/api/countries/active").permitAll()
                         .requestMatchers("/api/config/**").permitAll()
                         .requestMatchers("/api/roles/**").permitAll()
@@ -65,7 +67,9 @@ public class SecurityConfig {
                         // Tout le reste nécessite une authentification
                         .anyRequest().authenticated()
                 )
-                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
+                // 🛡️ APPLICATION IMMÉDIATE : Vérifie les droits des modules juste après l'auth JWT
+                .addFilterAfter(adminPermissionFilter, JwtAuthFilter.class);
 
         return http.build();
     }
@@ -76,13 +80,9 @@ public class SecurityConfig {
         config.setAllowedOrigins(List.of("http://localhost:4200")); // Angular
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
 
-        // 🎯 Remplace l'étoile par l'autorisation explicite de tous les headers pour éviter les surprises
         config.setAllowedHeaders(List.of("Origin", "Access-Control-Allow-Origin", "Content-Type",
                 "Accept", "Authorization", "Origin, Accept", "X-Requested-With",
                 "Access-Control-Request-Method", "Access-Control-Request-Headers"));
-
-        // 🎯 Option de secours : si tu veux un jour réutiliser un joker global, utilise patterns :
-        // config.setAllowedOriginPatterns(List.of("*"));
 
         config.setAllowCredentials(true);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

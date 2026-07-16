@@ -1,5 +1,6 @@
 package com.yassmine.administration.model;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.yassmine.administration.model.embedded.*;
 import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
@@ -8,9 +9,12 @@ import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Document(collection = "users")
 @Data
@@ -102,9 +106,25 @@ public class User {
     private Integer       complettProfileEmailReminderCount;
     private LocalDateTime lastProfileUpload;
 
-    // ── Timestamps ─────────────────────────────────────────────────
+    private Object isSuperAdmin;
+
+    @Builder.Default
+    private Map<String, PermissionDetail> permissions = new HashMap<>();
+
+    private LocalDate permissionsExpiryDate;
+
+    // 🟢 CORRIGÉ : @JsonProperty force la clé JSON à "isBlocked".
+    // Sans ça, Jackson retire le préfixe "is" du getter généré par Lombok
+    // (isBlocked() -> propriété "blocked"), et le frontend qui teste
+    // "admin.isBlocked" reçoit toujours undefined.
+    @JsonProperty("isBlocked")
+    private boolean isBlocked;
+
+    private LocalDate blockedUntil;
+
     @CreatedDate
     private LocalDateTime createdAt;
+    // ── Timestamps ─────────────────────────────────────────────────
 
     @LastModifiedDate
     private LocalDateTime updatedAt;
@@ -112,4 +132,14 @@ public class User {
     // ── Getter/Setter manuel (gardé pour compatibilité) ────────────
     public String getDernierePosteOccupe() { return dernierePosteOccupe; }
     public void setDernierePosteOccupe(String v) { this.dernierePosteOccupe = v; }
+
+    public boolean isSuperAdmin() {
+        if (this.isSuperAdmin instanceof Boolean) {
+            return (Boolean) this.isSuperAdmin;
+        }
+        if (this.isSuperAdmin instanceof String) {
+            return Boolean.parseBoolean((String) this.isSuperAdmin);
+        }
+        return false;
+    }
 }

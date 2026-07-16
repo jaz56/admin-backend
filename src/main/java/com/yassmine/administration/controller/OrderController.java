@@ -42,7 +42,6 @@ public class OrderController {
         return ResponseEntity.ok(response);
     }
 
-
     @PostMapping("/booking/{bookingId}")
     @PreAuthorize("hasAnyAuthority('ADMIN', 'ROLE_ADMIN', 'admin', 'ROLE_admin')")
     public ResponseEntity<ApiResponse<Order>> createForBooking(
@@ -65,6 +64,17 @@ public class OrderController {
 
         Order updated = orderService.updateStatus(id, payload.get("status"));
         return ResponseEntity.ok(ApiResponse.success(updated, "Statut de la commande mis à jour"));
+    }
+
+    // 🟢 NOUVEAU : modification complète d'une commande (prix, devise, pays, date, heure, statut)
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'ROLE_ADMIN', 'admin', 'ROLE_admin')")
+    public ResponseEntity<ApiResponse<Order>> updateOrder(
+            @PathVariable String id,
+            @RequestBody Map<String, Object> payload) {
+
+        Order updated = orderService.updateOrder(id, payload);
+        return ResponseEntity.ok(ApiResponse.success(updated, "Commande mise à jour avec succès"));
     }
 
     @DeleteMapping("/{id}")
