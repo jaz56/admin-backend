@@ -22,6 +22,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import java.util.Arrays;
 import java.util.List;
 
 @Configuration
@@ -31,9 +32,16 @@ import java.util.List;
 public class SecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
-    private final AdminPermissionFilter adminPermissionFilter; // 🟢 INJECTION DE VOTRE FILTRE
+    private final AdminPermissionFilter adminPermissionFilter;
     private final UserDetailsServiceImpl userDetailsService;
     private final JwtAuthEntryPoint jwtAuthEntryPoint;
+
+    // 🟢 NOUVEAU : liste des origines autorisées, configurable via variable d'environnement
+    // CORS_ALLOWED_ORIGINS (séparées par des virgules), avec un défaut sûr pour le dev local.
+    // Ça permet à la même image Docker de fonctionner sur dev/staging/prod sans jamais
+    // recompiler — juste en changeant la variable d'environnement au déploiement.
+    @Value("${app.cors.allowed-origins:http://localhost:4200}")
+    private String allowedOriginsConfig;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -68,7 +76,6 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
-                // 🛡️ APPLICATION IMMÉDIATE : Vérifie les droits des modules juste après l'auth JWT
                 .addFilterAfter(adminPermissionFilter, JwtAuthFilter.class);
 
         return http.build();
@@ -77,7 +84,15 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of("http://localhost:4200")); // Angular
+
+        // 🟢 CORRIGÉ : découpe la liste d'origines fournie par variable d'environnement
+        // (séparées par des virgules) au lieu d'une seule valeur figée en dur.
+        List<String> allowedOrigins = Arrays.stream(allowedOriginsConfig.split(","))
+                .map(String::trim)
+                .filter(origin -> !origin.isEmpty())
+                .toList();
+        config.setAllowedOrigins(allowedOrigins);
+
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
 
         config.setAllowedHeaders(List.of("Origin", "Access-Control-Allow-Origin", "Content-Type",
