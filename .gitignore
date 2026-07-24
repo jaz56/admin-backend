@@ -43,3 +43,15 @@ docker-compose.override.yml
 # Persisté uniquement via le volume Docker nommé admin_uploads, jamais dans le dépôt Git
 /uploads/
 uploads/
+
+# Protection systématique contre les fuites de clés/secrets, même hors infra-notes/
+*.pem
+*.key
+id_ed25519
+id_ed25519.pub
+id_rsa
+id_rsa.pub
+ansible_key
+ansible_key.pub
+*.env
+.env.*

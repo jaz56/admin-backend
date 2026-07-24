@@ -25,7 +25,14 @@ pipeline {
                 checkout scm
             }
         }
-
+stage('🔐 Préparer la configuration') {
+    steps {
+        echo '=== Injection de application.properties depuis Jenkins Credentials ==='
+        withCredentials([file(credentialsId: 'backend-application-properties', variable: 'APP_PROPS_FILE')]) {
+            sh 'cp "$APP_PROPS_FILE" src/main/resources/application.properties'
+        }
+    }
+}
         stage('📦 Installation des dépendances') {
             steps {
                 echo '=== Installation Maven ==='
