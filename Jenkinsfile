@@ -75,7 +75,7 @@ pipeline {
                 withSonarQubeEnv('SonarQube') {
                     sh '''
                         export MAVEN_OPTS="-Xmx512m -XX:MaxMetaspaceSize=256m"
-                        mvn sonar:sonar \
+                        mvn org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
                             -Dsonar.projectKey=Admin-Backend \
                             -Dsonar.host.url=http://sonarqube:9000 \
                             -Dsonar.token=$SONAR_TOKEN
