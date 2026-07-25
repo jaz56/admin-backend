@@ -85,6 +85,7 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
+        System.out.println("🔍 CORS ALLOWED ORIGINS CONFIG = [" + allowedOriginsConfig + "]");
 
         // 🟢 CORRIGÉ : découpe la liste d'origines fournie par variable d'environnement
         // (séparées par des virgules) au lieu d'une seule valeur figée en dur.
