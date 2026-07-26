@@ -228,7 +228,7 @@ Observer la montée en charge dans Grafana, puis vérifier le déclenchement de 
 | 0 | Planification réseau et adressage IP | ✅ Fait |
 | 1 | Provisionnement VMs, SSH, Ansible | ✅ Fait |
 | 2 | Durcissement de base (SSH, fail2ban, firewall, chrony) | ✅ Fait |
-| 3 | Environnements dev / staging / prod | ⏳ À faire |
+| 3 | Environnements dev / staging / prod | ✅ Fait |
 | 4 | Stack de monitoring (Prometheus/Grafana/Alertmanager) | ✅ Fait |
 | 5 | IDS/IPS (Wazuh/Suricata) + validation via labo pentest (Kali) | 🟡 fail2ban validé, Wazuh/Suricata à faire |
 | 6 | Intégration Jenkins (déploiement auto par environnement) | ⏳ À faire |
@@ -236,7 +236,79 @@ Observer la montée en charge dans Grafana, puis vérifier le déclenchement de 
 
 ## Prochaine étape immédiate
 
-Déploiement de Wazuh (HIDS) sur `rocky-staging` pour la détection d'intrusion basée sur l'hôte.
+Reprendre la Phase 5 (Wazuh) ou la Phase 6 (intégration Jenkins par environnement / branche).
+
+## Phase 3 (suite) — Environnement Production
+
+### Architecture
+
+`prod-server` (`192.168.72.40`), Ubuntu Server 24.04, provisionnée avec la même procédure que `staging`/`wazuh-manager` — mais cette fois, chaque piège connu a été anticipé :
+
+- **Disque étendu à 38 Go dès la création** (avant toute installation lourde), au lieu de découvrir le problème après un plantage comme sur Rocky/Wazuh.
+- **`docker-compose.yml`** quasi identique à celui de staging, avec noms de conteneurs préfixés `prod_` et **secrets distincts** (mot de passe MongoDB, `JWT_SECRET` propres à la prod, générés séparément — jamais réutilisés d'un environnement à l'autre).
+- **`CORS_ALLOWED_ORIGINS`** inclut désormais les trois environnements en une seule variable :
+  ```
+  http://localhost:4200,http://192.168.72.20:4200,http://192.168.72.40:4200
+  ```
+  Ce qui confirme que l'architecture (image Docker unique + config CORS/URL API entièrement portée par les variables d'environnement) fonctionne comme prévu : **aucune modification de code n'a été nécessaire** pour ajouter cet environnement, seule la configuration Docker Compose a changé.
+
+### Résultat
+
+Backend démarré sans erreur du premier coup (aucune erreur mail/Mongo/CORS, contrairement à staging) — validation que les fixes de la Phase 3 (staging) étaient bien la cause racine, désormais résolue au niveau du code et non plus contournée au cas par cas.
+
+Connexion `http://192.168.72.40:4200` avec le compte `admin@entreprise.com` validée avec succès.
+
+### Compte super admin
+
+Réinsertion manuelle du même document `users` que sur staging (voir procédure `mongosh` dans la section staging ci-dessus) — à faire une fois par environnement après le premier démarrage.
+
+## Phase 3 — Environnement Staging (validé)
+
+### Architecture
+
+`rocky-staging` (`192.168.72.20`) héberge une stack Docker Compose autonome, indépendante de l'environnement dev (Docker Desktop Windows) :
+
+```
+~/staging-app/
+├── .env                    # secrets, jamais commité
+└── docker-compose.yml      # mongodb + backend + frontend
+```
+
+Images tirées directement de Docker Hub (`yassmine0806/admin-backend:latest`, `yassmine0806/admin-frontend:latest`) — pas de rebuild local, le pipeline Jenkins alimente Docker Hub, staging ne fait que `docker compose pull`.
+
+### Points critiques résolus (dans l'ordre rencontré)
+
+1. **Disque `rocky-staging` insuffisant** (10 Go pour `/`) → `docker system prune -af` a suffi à libérer assez de marge pour les 3 images (Mongo, backend Java, frontend Nginx) sans besoin d'étendre le LVM.
+
+2. **`application.properties` jamais commité dans Git** (volontairement, pour la sécurité) → Jenkins compilait un `.jar` sans AUCUNE configuration (mail, CORS...). Fix : injection via Jenkins Secret File (`backend-application-properties`) dans une étape dédiée du `Jenkinsfile`, **avant** `mvn dependency:resolve`.
+
+3. **Piège du cache Jenkins Secret File** : modifier le contenu d'un Secret File existant dans Jenkins ne garantit pas que le prochain build le relit correctement si le timing est ambigu. En cas de doute, **re-uploader complètement le fichier depuis zéro** plutôt que d'éditer, pour éliminer toute ambiguïté.
+
+4. **`fileReplacements` manquant dans `angular.json`** → Angular ignorait `environment.prod.ts` même avec `--configuration production`, servant toujours `environment.ts` (avec `apiUrl: 'http://localhost:8083/api'` codé en dur). Fix : ajout explicite de `fileReplacements` dans la configuration `production`.
+
+5. **URL API absolue incompatible multi-environnements** → `environment.prod.ts` passé à une URL **relative** (`apiUrl: '/api'`), combiné à un reverse proxy Nginx dans le conteneur frontend (`location /api/ { proxy_pass http://backend:8083/api/; }`). Cette combinaison permet à la **même image Docker** de fonctionner sur dev, staging et prod sans jamais recompiler — le nom de service Docker Compose (`backend`) est résolu automatiquement par le DNS interne, quel que soit l'environnement.
+
+6. **CORS limité à une seule origine en dur** → `SecurityConfig.java` modifié pour lire les origines autorisées via `@Value("${app.cors.allowed-origins:http://localhost:4200}")`, elle-même alimentée par la variable d'environnement `CORS_ALLOWED_ORIGINS` (liste séparée par virgules) au niveau du `docker-compose.yml` de chaque environnement.
+
+7. **Build Jenkins cassé par l'inlining de polices Google Fonts** → l'agent Jenkins n'avait pas d'accès réseau fiable vers `fonts.googleapis.com` au moment du build. Fix : `"optimization": { "fonts": false }` dans `angular.json`.
+
+8. **Plugin Sonar introuvable** (`mvn sonar:sonar`) → remplacé par les coordonnées complètes du plugin : `mvn org.sonarsource.scanner.maven:sonar-maven-plugin:sonar`.
+
+9. **Compte super admin absent après reset de volume MongoDB** → réinsertion manuelle du document `users` via `mongosh` après chaque recréation du volume `mongodb_data` (nécessaire une fois, suite à un mot de passe incorrect entre guillemets `< >` dans `.env`).
+
+### Diagnostiquer un souci de config non appliquée — méthode fiable
+
+Ne jamais se fier uniquement à `docker exec ... env` (montre les variables d'environnement, pas le contenu réel du `.jar`). Vérifier directement le fichier empaqueté dans l'image :
+
+```bash
+docker exec staging_backend sh -c 'unzip -p /app.jar BOOT-INF/classes/application.properties'
+```
+
+Cette commande est la source de vérité absolue sur ce qui tourne réellement, indépendamment des hypothèses sur le pipeline.
+
+### Compte de test staging
+
+`admin@entreprise.com` — mot de passe identique à celui de dev (même hash bcrypt réinséré manuellement). À faire évoluer vers un mot de passe distinct par environnement si staging devient un usage plus régulier.
 
 ## Phase 5 — Validation fail2ban via labo pentest isolé (Kali)
 
