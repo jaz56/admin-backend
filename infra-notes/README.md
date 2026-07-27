@@ -221,6 +221,8 @@ Observer la montée en charge dans Grafana, puis vérifier le déclenchement de 
 | node_exporter `DOWN` dans Prometheus alors qu'il répond en local | Vérifier le pare-feu contre le bon sous-réseau Docker (voir section ci-dessus) |
 | Grafana refuse le nouveau mot de passe après changement de `.env` | Utiliser `docker exec -it grafana grafana cli admin reset-admin-password` — `.env` ne s'applique qu'à la première création |
 
+> 📌 Les pièges spécifiques au code applicatif (URLs codées en dur, CORS, permissions d'upload, `NG0201` datepicker, etc.) sont documentés dans les README dédiés `Back_Admin/README.md` et `front_Admin/README.md`, section **"Pièges connus — déploiement multi-environnements"**. Ce document-ci couvre l'infrastructure (VMs, réseau, monitoring, sécurité).
+
 ## Feuille de route — état d'avancement
 
 | Phase | Contenu | Statut |
