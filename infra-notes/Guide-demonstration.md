@@ -1,6 +1,5 @@
 # Guide de démonstration — Infrastructure DevOps/Sécurité
 
-Document de présentation pour l'encadreur de stage. Regroupe les URLs d'accès et les commandes clés pour démontrer chaque composant de l'infrastructure mise en place.
 
 ---
 
