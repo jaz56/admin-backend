@@ -149,7 +149,7 @@ public class DemandeService {
         demande.setUserId(userId); // adapter selon votre champ @Field("user")
         demande.setType((String) payload.get("type"));
         demande.setStatus((String) payload.getOrDefault("status", "en_attente"));
-        demande.setProgress("CREATED_BY_ADMIN");
+        demande.setProgress("TRAVAIL_STEP_1_SUBSTEP_5");
         demande.setJourneesDestination((String) payload.get("journeesDestination"));
         demande.setEligibiliteNote((String) payload.get("eligibiliteNote"));
 

@@ -55,7 +55,18 @@ public class AdministrationApplication {
                     item("verified", "Vérifié",    "success", 2),
                     item("rejected", "Rejeté",     "danger",  3)
             ));
+            // ── Étapes de progression des demandes (type Travail) ──────────────
+            seedCategory(mongoTemplate, "demande_progress_step", List.of(
+                    item("TRAVAIL_STEP_1_SUBSTEP_1", "Étape 1.1", null, 1),
+                    item("TRAVAIL_STEP_1_SUBSTEP_2", "Étape 1.2", null, 2),
+                    item("TRAVAIL_STEP_1_SUBSTEP_3", "Étape 1.3", null, 3),
+                    item("TRAVAIL_STEP_1_SUBSTEP_4", "Étape 1.4", null, 4),
+                    item("TRAVAIL_STEP_1_SUBSTEP_5", "Étape 1.5", null, 5),
+                    item("TRAVAIL_STEP_1_SUBSTEP_6", "Étape 1.6", null, 6),
+                    item("STEP_2", "Étape 2", null, 7)
+            ));
         };
+
     }
     private void seedCategory(MongoTemplate mongo, String category, List<ConfigItem> items) {
         long count = mongo.count(
