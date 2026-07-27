@@ -324,8 +324,7 @@ public class UserService {
     }
     public String uploadUserFile(String userId, MultipartFile file, String type) {
         String relativePath = fileStorageService.store(file, userId, type);
-        String fullUrl = "http://localhost:8083" + relativePath;
-
+        String fullUrl = baseUrl + relativePath;
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Utilisateur introuvable : " + userId));
 
