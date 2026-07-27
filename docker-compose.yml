@@ -11,6 +11,7 @@ services:
       - mongo_data:/data/db
 
   backend:
+    build: .
     image: admin-backend
     container_name: admin_backend
     ports:
