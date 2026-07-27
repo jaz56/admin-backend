@@ -18,6 +18,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.util.Date;
+import java.util.List;
 import java.util.Map;
 
 @Component
@@ -33,6 +34,15 @@ public class AdminPermissionFilter extends OncePerRequestFilter {
             "bookings", "entretiens",
             "admin", "admins"
     );
+
+    // 🟢 NOUVEAU : mots-clés d'URL identifiant un upload de fichier sur une ressource
+    // EXISTANTE (photo, CIN, enregistrement vocal, documents...). Bien qu'exprimées en
+    // HTTP POST, ces actions modifient un utilisateur/booking déjà créé — elles doivent
+    // donc être gouvernées par le droit "update", pas "create". Sans cette exception,
+    // un admin ayant seulement le droit "update" (mais pas "create") sur un module se
+    // voyait refuser tout upload (photo, CIN, vocal), alors qu'il peut pourtant modifier
+    // les autres champs du même formulaire.
+    private static final List<String> UPLOAD_KEYWORDS = List.of("upload", "documents");
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
@@ -107,6 +117,17 @@ public class AdminPermissionFilter extends OncePerRequestFilter {
             return;
         }
 
+        // 🟢 EXEMPTION SPÉCIFIQUE : le dashboard de statistiques (/api/admin/stats) est une vue
+        // d'ensemble en lecture seule, distincte de la gestion des administrateurs
+        // (/api/admin/sub-admins, qui elle continue d'exiger le droit "admins"). Sans cette
+        // exemption, tout admin non-super sans le droit "admins.read" voyait ses statistiques
+        // bloquées en 403, d'où des graphiques vides/gris sur le dashboard.
+        if (uri.startsWith("/api/admin/stats")) {
+            log.info("📊 [FILTER] Route de statistiques dashboard : accessible à tout admin authentifié et non bloqué.");
+            filterChain.doFilter(request, response);
+            return;
+        }
+
         // 6. Validation par module
         String[] uriSegments = uri.split("/");
         if (uriSegments.length > 2 && "api".equals(uriSegments[1])) {
@@ -132,10 +153,26 @@ public class AdminPermissionFilter extends OncePerRequestFilter {
                 sendForbiddenError(response, "Action interdite : Lecture non autorisée.");
                 return;
             }
-            if (method.equalsIgnoreCase("POST") && !detail.isCreate()) {
-                log.warn("❌ [FILTER] Rejet : Création interdite sur le module '{}'", module);
-                sendForbiddenError(response, "Action interdite : Création non autorisée.");
-                return;
+            if (method.equalsIgnoreCase("POST")) {
+                // 🟢 CORRIGÉ : un POST vers un endpoint d'upload (photo, CIN, vocal,
+                // documents...) modifie une ressource EXISTANTE — il doit donc être
+                // gouverné par le droit "update", pas "create". Un vrai POST de création
+                // (ex: /api/users/admin, /api/demandes) reste vérifié contre "create".
+                boolean isUploadAction = UPLOAD_KEYWORDS.stream().anyMatch(uri::contains);
+
+                if (isUploadAction) {
+                    if (!detail.isUpdate()) {
+                        log.warn("❌ [FILTER] Rejet : Upload interdit sur le module '{}' (droit 'update' requis)", module);
+                        sendForbiddenError(response, "Action interdite : Modification non autorisée.");
+                        return;
+                    }
+                } else {
+                    if (!detail.isCreate()) {
+                        log.warn("❌ [FILTER] Rejet : Création interdite sur le module '{}'", module);
+                        sendForbiddenError(response, "Action interdite : Création non autorisée.");
+                        return;
+                    }
+                }
             }
             if ((method.equalsIgnoreCase("PUT") || method.equalsIgnoreCase("PATCH") || method.equalsIgnoreCase("DELETE")) && !detail.isUpdate()) {
                 log.warn("❌ [FILTER] Rejet : Modification/Suppression interdite sur le module '{}'", module);
