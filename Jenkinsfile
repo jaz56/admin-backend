@@ -75,7 +75,7 @@ pipeline {
                 withSonarQubeEnv('SonarQube') {
                     sh '''
                         export MAVEN_OPTS="-Xmx512m -XX:MaxMetaspaceSize=256m"
-                        mvn org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
+                        mvn sonar:sonar \
                             -Dsonar.projectKey=Admin-Backend \
                             -Dsonar.host.url=http://sonarqube:9000 \
                             -Dsonar.token=$SONAR_TOKEN
@@ -137,6 +137,30 @@ pipeline {
                         --restart unless-stopped \
                         ${DOCKER_IMAGE_BACKEND}:latest
                 """
+            }
+        }
+
+        stage('Déployer sur Staging') {
+            steps {
+                echo '=== Déploiement automatique sur rocky-staging (192.168.72.20) ==='
+                withCredentials([sshUserPrivateKey(credentialsId: 'ssh-staging-prod-key', keyFileVariable: 'SSH_KEY', usernameVariable: 'SSH_USER')]) {
+                    sh """
+                        ssh -i \$SSH_KEY -o StrictHostKeyChecking=no -p 2222 \$SSH_USER@192.168.72.20 \
+                        'cd ~/staging-app && docker compose pull backend && docker compose up -d backend'
+                    """
+                }
+            }
+        }
+
+        stage('Déployer sur Production') {
+            steps {
+                echo '=== Déploiement automatique sur prod-server (192.168.72.40) ==='
+                withCredentials([sshUserPrivateKey(credentialsId: 'ssh-staging-prod-key', keyFileVariable: 'SSH_KEY', usernameVariable: 'SSH_USER')]) {
+                    sh """
+                        ssh -i \$SSH_KEY -o StrictHostKeyChecking=no \$SSH_USER@192.168.72.40 \
+                        'cd ~/prod-app && docker compose pull backend && docker compose up -d backend'
+                    """
+                }
             }
         }
     }
