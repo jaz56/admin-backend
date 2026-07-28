@@ -75,7 +75,7 @@ pipeline {
                 withSonarQubeEnv('SonarQube') {
                     sh '''
                         export MAVEN_OPTS="-Xmx512m -XX:MaxMetaspaceSize=256m"
-                        mvn org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
+                        mvn sonar:sonar \
                             -Dsonar.projectKey=Admin-Backend \
                             -Dsonar.host.url=http://sonarqube:9000 \
                             -Dsonar.token=$SONAR_TOKEN
@@ -111,9 +111,10 @@ pipeline {
             }
         }
 
-        stage('Déploiement') {
+        stage('Déploiement (Dev local)') {
+            when { branch 'develop' }
             steps {
-                echo '=== Déploiement avec Docker ==='
+                echo '=== Déploiement automatique sur environnement Dev local ==='
                 sh """
                     docker stop admin_backend || true
                     docker rm admin_backend || true
@@ -141,6 +142,7 @@ pipeline {
         }
 
         stage('Déployer sur Staging') {
+            when { branch 'staging' }
             steps {
                 echo '=== Déploiement automatique sur rocky-staging (192.168.72.20) ==='
                 withCredentials([sshUserPrivateKey(credentialsId: 'ssh-staging-prod-key', keyFileVariable: 'SSH_KEY', usernameVariable: 'SSH_USER')]) {
@@ -152,7 +154,22 @@ pipeline {
             }
         }
 
+        stage('Approbation manuelle avant Production') {
+            when { branch 'main' }
+            steps {
+                script {
+                    // 🟢 Étape d'approbation humaine — le pipeline se met en pause ici,
+                    // un membre de l'équipe (ou toi-même) doit cliquer "Proceed" dans
+                    // Jenkins pour autoriser le déploiement en production.
+                    timeout(time: 30, unit: 'MINUTES') {
+                        input message: "Déployer cette version en PRODUCTION ?", ok: "Oui, déployer"
+                    }
+                }
+            }
+        }
+
         stage('Déployer sur Production') {
+            when { branch 'main' }
             steps {
                 echo '=== Déploiement automatique sur prod-server (192.168.72.40) ==='
                 withCredentials([sshUserPrivateKey(credentialsId: 'ssh-staging-prod-key', keyFileVariable: 'SSH_KEY', usernameVariable: 'SSH_USER')]) {
