@@ -10,11 +10,10 @@ pipeline {
         DOCKER_HUB_USER = 'yassmine0806'
         DOCKER_IMAGE_BACKEND = "${DOCKER_HUB_USER}/admin-backend"
         DOCKER_TAG = "${BUILD_NUMBER}"
-        // Secrets de déploiement, stockés dans Jenkins Credentials — plus jamais en clair ici
-        MONGODB_URI   = credentials('backend-mongodb-uri')      // Secret text
-        JWT_SECRET    = credentials('backend-jwt-secret')       // Secret text
-        MAIL_USERNAME = credentials('backend-mail-username')    // Secret text
-        MAIL_PASSWORD = credentials('backend-mail-password')    // Secret text
+        MONGODB_URI   = credentials('backend-mongodb-uri')
+        JWT_SECRET    = credentials('backend-jwt-secret')
+        MAIL_USERNAME = credentials('backend-mail-username')
+        MAIL_PASSWORD = credentials('backend-mail-password')
     }
 
     stages {
@@ -26,10 +25,6 @@ pipeline {
             }
         }
 
-        // NOUVEAU : injecte application.properties depuis Jenkins Credentials.
-        // Ce fichier n'est jamais commité dans Git (voir .gitignore), donc sans
-        // cette étape, Jenkins compile un .jar sans AUCUNE config (mail, mongo,
-        // jwt...) — c'est la cause du crash JavaMailSender rencontré en staging.
         stage('Préparer la configuration') {
             steps {
                 echo '=== Injection de application.properties depuis Jenkins Credentials ==='
@@ -46,8 +41,6 @@ pipeline {
             }
         }
 
-        // Injecte le fichier de config de test depuis les Jenkins Credentials
-        // (Secret file), puisque application-test.properties n'est plus versionné dans Git.
         stage('Préparer la config de test') {
             steps {
                 echo '=== Injection de application-test.properties depuis Jenkins Credentials ==='
@@ -75,10 +68,7 @@ pipeline {
                 withSonarQubeEnv('SonarQube') {
                     sh '''
                         export MAVEN_OPTS="-Xmx512m -XX:MaxMetaspaceSize=256m"
-                        mvn org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
-                            -Dsonar.projectKey=Admin-Backend \
-                            -Dsonar.host.url=http://sonarqube:9000 \
-                            -Dsonar.token=$SONAR_TOKEN
+                        mvn org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.projectKey=Admin-Backend -Dsonar.host.url=http://sonarqube:9000 -Dsonar.token=$SONAR_TOKEN
                     '''
                 }
             }
@@ -147,8 +137,7 @@ pipeline {
                 echo '=== Déploiement automatique sur rocky-staging (192.168.72.20) ==='
                 withCredentials([sshUserPrivateKey(credentialsId: 'ssh-staging-prod-key', keyFileVariable: 'SSH_KEY', usernameVariable: 'SSH_USER')]) {
                     sh """
-                        ssh -i \$SSH_KEY -o StrictHostKeyChecking=no -p 2222 \$SSH_USER@192.168.72.20 \
-                        'cd ~/staging-app && docker compose pull backend && docker compose up -d backend'
+                        ssh -i \$SSH_KEY -o StrictHostKeyChecking=no -p 2222 \$SSH_USER@192.168.72.20 'cd ~/staging-app && docker compose pull backend && docker compose up -d backend'
                     """
                 }
             }
@@ -158,9 +147,6 @@ pipeline {
             when { branch 'main' }
             steps {
                 script {
-                    // 🟢 Étape d'approbation humaine — le pipeline se met en pause ici,
-                    // un membre de l'équipe (ou toi-même) doit cliquer "Proceed" dans
-                    // Jenkins pour autoriser le déploiement en production.
                     timeout(time: 30, unit: 'MINUTES') {
                         input message: "Déployer cette version en PRODUCTION ?", ok: "Oui, déployer"
                     }
@@ -174,8 +160,7 @@ pipeline {
                 echo '=== Déploiement automatique sur prod-server (192.168.72.40) ==='
                 withCredentials([sshUserPrivateKey(credentialsId: 'ssh-staging-prod-key', keyFileVariable: 'SSH_KEY', usernameVariable: 'SSH_USER')]) {
                     sh """
-                        ssh -i \$SSH_KEY -o StrictHostKeyChecking=no \$SSH_USER@192.168.72.40 \
-                        'cd ~/prod-app && docker compose pull backend && docker compose up -d backend'
+                        ssh -i \$SSH_KEY -o StrictHostKeyChecking=no \$SSH_USER@192.168.72.40 'cd ~/prod-app && docker compose pull backend && docker compose up -d backend'
                     """
                 }
             }
@@ -186,7 +171,7 @@ pipeline {
         success {
             echo 'Pipeline terminé avec succès !'
         }
-        failure {:
+        failure {
             echo 'Pipeline échoué !'
         }
         always {
