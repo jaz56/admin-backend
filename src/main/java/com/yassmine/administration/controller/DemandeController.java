@@ -86,8 +86,7 @@ public class DemandeController {
 
         // Si ta méthode de service a absolument besoin de "progress",
         // on peut utiliser la même valeur que "status", ou ce que tu avais prévu.
-        String progress = payload.getOrDefault("progress", status);
-
+        String progress = payload.get("progress");
         Demande updated = demandeService.updateProgress(id, progress, status);
         return ResponseEntity.ok(ApiResponse.success(updated, "Le statut de la demande a été mis à jour par l'admin"));
     }

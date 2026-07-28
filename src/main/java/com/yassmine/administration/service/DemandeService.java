@@ -41,8 +41,29 @@ public class DemandeService {
     // UPDATE : Mettre à jour le statut ou la progression (ex: Passer à l'étape suivante)
     public Demande updateProgress(String id, String newProgress, String newStatus) {
         Demande demande = getById(id);
-        demande.setProgress(newProgress);
-        demande.setStatus(newStatus);
+        String oldProgress = demande.getProgress();
+
+        // Cas 1 : le front envoie un progress explicite (ex: formulaire complet)
+        if (newProgress != null && !newProgress.isBlank()) {
+            demande.setProgress(newProgress);
+            syncProgressAndStatus(demande, oldProgress);
+            // Si pas de sync automatique déclenchée, applique quand même le status fourni
+            if (newStatus != null && !"pre_selection".equalsIgnoreCase(demande.getStatus())) {
+                demande.setStatus(newStatus);
+            }
+        }
+        // Cas 2 : seul le status change (menu rapide "Changer statut")
+        else if (newStatus != null) {
+            demande.setStatus(newStatus);
+            if ("pre_selection".equalsIgnoreCase(newStatus)) {
+                String oldProgressUpper = oldProgress != null ? oldProgress.toUpperCase() : "";
+                if (!oldProgressUpper.contains("STEP_2")) {
+                    demande.setProgress("STEP_2");
+                    autoCreateBooking(demande);
+                }
+            }
+        }
+
         return demandeRepository.save(demande);
     }
 
@@ -132,12 +153,7 @@ public class DemandeService {
         existing.setProgress(updated.getProgress());
 
         // ✅ Comparer avec oldProgress
-        if (updated.getProgress() != null &&
-                updated.getProgress().contains("STEP_2") &&
-                (oldProgress == null || !oldProgress.contains("STEP_2"))) {
-
-            autoCreateBooking(existing);
-        }
+        syncProgressAndStatus(existing, oldProgress);
 
         return demandeRepository.save(existing);
     }
@@ -327,16 +343,7 @@ public class DemandeService {
             existing.setUserId(updated.getUserId());
         }
 
-        // 🔥 CORRECTION ICI : Utilisation de toUpperCase() pour sécuriser la vérification
-        String newProgressUpper = updated.getProgress() != null ? updated.getProgress().toUpperCase() : "";
-        String oldProgressUpper = oldProgress != null ? oldProgress.toUpperCase() : "";
-
-        if (newProgressUpper.contains("STEP_2") && !oldProgressUpper.contains("STEP_2")) {
-            System.out.println("✅ Condition STEP_2 remplie — création booking...");
-            autoCreateBooking(existing);
-        } else {
-            System.out.println("❌ Condition NON remplie — old: " + oldProgress + " new: " + updated.getProgress());
-        }
+        syncProgressAndStatus(existing, oldProgress);
 
         return demandeRepository.save(existing);
     }    private void autoCreateBooking(Demande demande) {
@@ -394,5 +401,17 @@ public class DemandeService {
 
         int nextId = maxId + 1;
         return String.format("BK%06d", nextId);
+    }
+    private void syncProgressAndStatus(Demande demande, String oldProgress) {
+        String oldProgressUpper = oldProgress != null ? oldProgress.toUpperCase() : "";
+        boolean wasStep2 = oldProgressUpper.contains("STEP_2");
+
+        String currentProgressUpper = demande.getProgress() != null ? demande.getProgress().toUpperCase() : "";
+        boolean isStep2Now = currentProgressUpper.contains("STEP_2");
+
+        if (isStep2Now && !wasStep2) {
+            demande.setStatus("pre_selection");
+            autoCreateBooking(demande);
+        }
     }
 }
