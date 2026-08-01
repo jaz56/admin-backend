@@ -58,8 +58,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // Routes publiques
                         .requestMatchers("/api/auth/**").permitAll()
-                        .requestMatchers("/actuator/health").permitAll()
-
+                        .requestMatchers("/actuator/health/**").permitAll()
                         // Routes admin
                         .requestMatchers("/api/admin/**").hasAnyAuthority("ADMIN", "ROLE_ADMIN", "admin", "ROLE_admin")
 
