@@ -44,9 +44,6 @@ public class OrderService {
         return orderRepository.findAll(pageable);
     }
 
-    /**
-     * Recherche globale dynamique multi-critères : Commandes, Utilisateurs et Bookings.
-     */
     public Page<Order> getAllOrdersFiltered(Map<String, String> params, int page, int limit) {
         Query query = new Query();
         List<Criteria> criteriaList = new ArrayList<>();
@@ -129,8 +126,11 @@ public class OrderService {
         return new PageImpl<>(orders, pageable, total);
     }
 
+    // Vérification stricte des paramètres valides
     private boolean hasText(Map<String, String> params, String key) {
-        return params.containsKey(key) && StringUtils.hasText(params.get(key));
+        if (!params.containsKey(key)) return false;
+        String val = params.get(key);
+        return StringUtils.hasText(val) && !"null".equalsIgnoreCase(val) && !"undefined".equalsIgnoreCase(val);
     }
 
     private boolean hasUserParams(Map<String, String> p) {
