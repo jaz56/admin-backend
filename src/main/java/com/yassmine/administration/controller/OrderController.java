@@ -4,10 +4,12 @@ import com.yassmine.administration.dto.response.ApiResponse;
 import com.yassmine.administration.model.Order;
 import com.yassmine.administration.service.OrderService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -26,13 +28,13 @@ public class OrderController {
     @GetMapping
     @PreAuthorize("hasAnyAuthority('ADMIN', 'ROLE_ADMIN', 'admin', 'ROLE_admin')")
     public ResponseEntity<Map<String, Object>> getAllOrders(
-            @RequestParam(required = false) String status,
+            @RequestParam Map<String, String> allParams,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int limit) {
 
-        org.springframework.data.domain.Page<Order> orderPage = orderService.getAllOrdersPaginated(status, page, limit);
+        Page<Order> orderPage = orderService.getAllOrdersFiltered(allParams, page, limit);
 
-        Map<String, Object> response = new java.util.HashMap<>();
+        Map<String, Object> response = new HashMap<>();
         response.put("data", orderPage.getContent());
         response.put("total", orderPage.getTotalElements());
 
