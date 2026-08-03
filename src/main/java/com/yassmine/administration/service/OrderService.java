@@ -123,7 +123,17 @@ public class OrderService {
             if (hasText(params, "priceMax")) priceCriteria.lte(Double.parseDouble(params.get("priceMax")));
             criteriaList.add(priceCriteria);
         }
-
+// Intervalle de date de commande (champ "date", format String "yyyy-MM-dd" — comparable lexicographiquement)
+        if (hasText(params, "dateFrom") || hasText(params, "dateTo")) {
+            Criteria dateCriteria = Criteria.where("date");
+            if (hasText(params, "dateFrom")) {
+                dateCriteria.gte(params.get("dateFrom").substring(0, 10));
+            }
+            if (hasText(params, "dateTo")) {
+                dateCriteria.lte(params.get("dateTo").substring(0, 10));
+            }
+            criteriaList.add(dateCriteria);
+        }
         // Intervalle de date de création (createdAt)
         if (hasText(params, "createdFrom") || hasText(params, "createdTo")) {
             Criteria createdCriteria = Criteria.where("createdAt");
