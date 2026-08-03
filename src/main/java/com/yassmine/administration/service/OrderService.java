@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -59,6 +60,9 @@ public class OrderService {
             if (hasText(params, "userFonction")) userQuery.addCriteria(Criteria.where("fonction").regex(params.get("userFonction"), "i"));
             if (hasText(params, "userCodePostal")) userQuery.addCriteria(Criteria.where("codePostal").is(params.get("userCodePostal")));
             if (hasText(params, "userJobFavori")) userQuery.addCriteria(Criteria.where("jobFavori").regex(params.get("userJobFavori"), "i"));
+            if (hasText(params, "userEmail")) userQuery.addCriteria(Criteria.where("email").regex(params.get("userEmail"), "i"));
+            if (hasText(params, "userNom")) userQuery.addCriteria(Criteria.where("nom").regex(params.get("userNom"), "i"));
+            if (hasText(params, "userPrenom")) userQuery.addCriteria(Criteria.where("prenom").regex(params.get("userPrenom"), "i"));
 
             List<String> matchedUserIds = mongoTemplate.find(userQuery, User.class)
                     .stream().map(User::getId).collect(Collectors.toList());
@@ -106,12 +110,30 @@ public class OrderService {
         if (hasText(params, "currency")) criteriaList.add(Criteria.where("currency").is(params.get("currency")));
         if (hasText(params, "country")) criteriaList.add(Criteria.where("country").regex(params.get("country"), "i"));
 
+        // Filtre direct par ID utilisateur exact (indépendant des autres critères "user*")
+        if (hasText(params, "userId")) criteriaList.add(Criteria.where("userId").is(params.get("userId")));
+
+        // Recherche par ID d'entretien (booking) — indépendante des autres critères "booking*"
+        if (hasText(params, "bookingSearch")) criteriaList.add(Criteria.where("bookingId").regex(params.get("bookingSearch"), "i"));
+
         // Intervalle de Prix
         if (hasText(params, "priceMin") || hasText(params, "priceMax")) {
             Criteria priceCriteria = Criteria.where("amount");
             if (hasText(params, "priceMin")) priceCriteria.gte(Double.parseDouble(params.get("priceMin")));
             if (hasText(params, "priceMax")) priceCriteria.lte(Double.parseDouble(params.get("priceMax")));
             criteriaList.add(priceCriteria);
+        }
+
+        // Intervalle de date de création (createdAt)
+        if (hasText(params, "createdFrom") || hasText(params, "createdTo")) {
+            Criteria createdCriteria = Criteria.where("createdAt");
+            if (hasText(params, "createdFrom")) {
+                createdCriteria.gte(LocalDateTime.parse(params.get("createdFrom").substring(0, 19)));
+            }
+            if (hasText(params, "createdTo")) {
+                createdCriteria.lte(LocalDateTime.parse(params.get("createdTo").substring(0, 19)));
+            }
+            criteriaList.add(createdCriteria);
         }
 
         if (!criteriaList.isEmpty()) {
@@ -136,7 +158,8 @@ public class OrderService {
     private boolean hasUserParams(Map<String, String> p) {
         return hasText(p, "userRole") || hasText(p, "userSexe") || hasText(p, "userPays") ||
                 hasText(p, "userPhone") || hasText(p, "userNationalite") || hasText(p, "userFonction") ||
-                hasText(p, "userCodePostal") || hasText(p, "userJobFavori");
+                hasText(p, "userCodePostal") || hasText(p, "userJobFavori") ||
+                hasText(p, "userEmail") || hasText(p, "userNom") || hasText(p, "userPrenom");
     }
 
     private boolean hasBookingParams(Map<String, String> p) {
@@ -200,6 +223,7 @@ public class OrderService {
         order.setStatus(status);
         return orderRepository.save(order);
     }
+
     /**
      * Récupère les valeurs distinctes réellement présentes dans la collection 'orders'
      * pour type, status et currency — alimente le filtrage dynamique du frontend.

@@ -9,6 +9,7 @@ import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.annotation.Version;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
+import org.springframework.data.mongodb.core.mapping.FieldType;
 
 import java.time.LocalDateTime;
 
@@ -47,7 +48,7 @@ public class Order {
 
     private String country;
 
-    @Field("user_id")
+    @Field(value = "user_id", targetType = FieldType.OBJECT_ID)
     private String userId;
 
     @CreatedDate
