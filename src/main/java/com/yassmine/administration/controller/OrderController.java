@@ -66,4 +66,11 @@ public class OrderController {
         Order updated = orderService.updateStatus(id, payload.get("status"));
         return ResponseEntity.ok(ApiResponse.success(updated, "Statut de la commande mis à jour"));
     }
+    @GetMapping("/filter-options")
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'ROLE_ADMIN', 'admin', 'ROLE_admin')")
+    public ResponseEntity<ApiResponse<Map<String, List<String>>>> getFilterOptions() {
+        return ResponseEntity.ok(
+                ApiResponse.success(orderService.getFilterOptions(), "Options de filtrage récupérées")
+        );
+    }
 }

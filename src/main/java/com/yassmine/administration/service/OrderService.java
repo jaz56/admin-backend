@@ -200,4 +200,24 @@ public class OrderService {
         order.setStatus(status);
         return orderRepository.save(order);
     }
+    /**
+     * Récupère les valeurs distinctes réellement présentes dans la collection 'orders'
+     * pour type, status et currency — alimente le filtrage dynamique du frontend.
+     */
+    public Map<String, List<String>> getFilterOptions() {
+        List<String> types = mongoTemplate.findDistinct(new Query(), "type", Order.class, String.class)
+                .stream().filter(StringUtils::hasText).sorted().collect(Collectors.toList());
+
+        List<String> statuses = mongoTemplate.findDistinct(new Query(), "status", Order.class, String.class)
+                .stream().filter(StringUtils::hasText).sorted().collect(Collectors.toList());
+
+        List<String> currencies = mongoTemplate.findDistinct(new Query(), "currency", Order.class, String.class)
+                .stream().filter(StringUtils::hasText).sorted().collect(Collectors.toList());
+
+        Map<String, List<String>> result = new LinkedHashMap<>();
+        result.put("types", types);
+        result.put("statuses", statuses);
+        result.put("currencies", currencies);
+        return result;
+    }
 }
