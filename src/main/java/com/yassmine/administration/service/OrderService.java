@@ -54,12 +54,11 @@ public class OrderService {
             Query userQuery = new Query();
             if (hasText(params, "userRole")) userQuery.addCriteria(Criteria.where("role").is(params.get("userRole")));
             if (hasText(params, "userSexe")) userQuery.addCriteria(Criteria.where("sexe").is(params.get("userSexe")));
-            if (hasText(params, "userPays")) userQuery.addCriteria(Criteria.where("pays").regex(params.get("userPays"), "i"));
-            if (hasText(params, "userPhone")) userQuery.addCriteria(Criteria.where("phone").regex(params.get("userPhone"), "i"));
-            if (hasText(params, "userNationalite")) userQuery.addCriteria(Criteria.where("nationalite").regex(params.get("userNationalite"), "i"));
-            if (hasText(params, "userFonction")) userQuery.addCriteria(Criteria.where("fonction").regex(params.get("userFonction"), "i"));
-            if (hasText(params, "userCodePostal")) userQuery.addCriteria(Criteria.where("codePostal").is(params.get("userCodePostal")));
-            if (hasText(params, "userJobFavori")) userQuery.addCriteria(Criteria.where("jobFavori").regex(params.get("userJobFavori"), "i"));
+            if (hasText(params, "userPays")) userQuery.addCriteria(Criteria.where("pays.label").regex(params.get("userPays"), "i"));
+            if (hasText(params, "userPhone")) userQuery.addCriteria(Criteria.where("numeroTel").regex(params.get("userPhone"), "i"));
+            if (hasText(params, "userNationalite")) userQuery.addCriteria(Criteria.where("nationalite.label").regex(params.get("userNationalite"), "i"));
+            if (hasText(params, "userCodePostal")) userQuery.addCriteria(Criteria.where("codePostal").regex(params.get("userCodePostal"), "i"));
+            if (hasText(params, "userJobFavori")) userQuery.addCriteria(Criteria.where("interessesPar").regex(params.get("userJobFavori"), "i"));
             if (hasText(params, "userEmail")) userQuery.addCriteria(Criteria.where("email").regex(params.get("userEmail"), "i"));
             if (hasText(params, "userNom")) userQuery.addCriteria(Criteria.where("nom").regex(params.get("userNom"), "i"));
             if (hasText(params, "userPrenom")) userQuery.addCriteria(Criteria.where("prenom").regex(params.get("userPrenom"), "i"));
@@ -83,6 +82,12 @@ public class OrderService {
             if (hasText(params, "interviewCompleted")) bookingQuery.addCriteria(Criteria.where("interviewCompleted").is(Boolean.parseBoolean(params.get("interviewCompleted"))));
             if (hasText(params, "appointmentTime")) bookingQuery.addCriteria(Criteria.where("appointmentTime").is(params.get("appointmentTime")));
             if (hasText(params, "appointmentYear")) bookingQuery.addCriteria(Criteria.where("appointmentYear").is(Integer.parseInt(params.get("appointmentYear"))));
+            if (hasText(params, "exactDate")) {
+                java.time.LocalDate day = java.time.LocalDate.parse(params.get("exactDate").substring(0, 10));
+                bookingQuery.addCriteria(Criteria.where("appointmentDate")
+                        .gte(day.atStartOfDay())
+                        .lt(day.plusDays(1).atStartOfDay()));
+            }
 
             List<String> matchedBookingIds = mongoTemplate.find(bookingQuery, Booking.class)
                     .stream().map(Booking::getUniqueId).collect(Collectors.toList());
@@ -123,6 +128,7 @@ public class OrderService {
             if (hasText(params, "priceMax")) priceCriteria.lte(Double.parseDouble(params.get("priceMax")));
             criteriaList.add(priceCriteria);
         }
+        if (hasText(params, "time")) criteriaList.add(Criteria.where("time").regex("^" + params.get("time"), "i"));
 // Intervalle de date de commande (champ "date", format String "yyyy-MM-dd" — comparable lexicographiquement)
         if (hasText(params, "dateFrom") || hasText(params, "dateTo")) {
             Criteria dateCriteria = Criteria.where("date");
@@ -175,8 +181,9 @@ public class OrderService {
     private boolean hasBookingParams(Map<String, String> p) {
         return hasText(p, "bookingDestination") || hasText(p, "appointmentType") ||
                 hasText(p, "paymentStatus") || hasText(p, "interviewStatus") ||
-                hasText(p, "interviewCompleted") || hasText(p, "appointmentTime") ||
+                hasText(p, "interviewCompleted") || hasText(p, "appointmentTime") ||hasText(p, "exactDate") ||
                 hasText(p, "appointmentYear");
+
     }
 
     public Order createForBooking(String bookingId, Map<String, Object> payload) {

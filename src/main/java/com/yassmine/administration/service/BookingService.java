@@ -285,4 +285,8 @@ public class BookingService {
         result.put("interviewStatuses", interviewStatuses);
         return result;
     }
+    public Booking getByUniqueId(String uniqueId) {
+        return bookingRepository.findByUniqueId(uniqueId)
+                .orElseThrow(() -> new ResourceNotFoundException("Réservation introuvable avec l'uniqueId : " + uniqueId));
+    }
 }

@@ -214,4 +214,10 @@ public class BookingController {
                 ApiResponse.success(bookingService.getFilterOptions(), "Options de filtrage récupérées")
         );
     }
+    @GetMapping("/unique/{uniqueId}")
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'ROLE_ADMIN', 'admin', 'ROLE_admin')")
+    public ResponseEntity<ApiResponse<Booking>> getByUniqueId(@PathVariable String uniqueId) {
+        Booking booking = bookingService.getByUniqueId(uniqueId);
+        return ResponseEntity.ok(ApiResponse.success(booking, "Booking récupéré"));
+    }
 }
