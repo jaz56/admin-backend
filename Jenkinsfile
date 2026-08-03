@@ -143,16 +143,7 @@ pipeline {
             }
         }
 
-        stage('Approbation manuelle avant Production') {
-            when { branch 'main' }
-            steps {
-                script {
-                    timeout(time: 30, unit: 'MINUTES') {
-                        input message: "Déployer cette version en PRODUCTION ?", ok: "Oui, déployer"
-                    }
-                }
-            }
-        }
+
 
         stage('Déployer sur Production') {
             when { branch 'main' }
