@@ -207,4 +207,11 @@ public class BookingController {
         bookingService.removeDocument(id, documentName);
         return ResponseEntity.ok(ApiResponse.success(null, "Document supprimé"));
     }
+    @GetMapping("/filter-options")
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'ROLE_ADMIN', 'admin', 'ROLE_admin')")
+    public ResponseEntity<ApiResponse<Map<String, List<String>>>> getFilterOptions() {
+        return ResponseEntity.ok(
+                ApiResponse.success(bookingService.getFilterOptions(), "Options de filtrage récupérées")
+        );
+    }
 }

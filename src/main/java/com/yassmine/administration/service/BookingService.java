@@ -1,4 +1,5 @@
 package com.yassmine.administration.service;
+import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.nio.file.*;
@@ -17,6 +18,7 @@ import org.springframework.data.domain.Sort;
 import java.math.BigDecimal;
 import java.util.*;
 import java.text.SimpleDateFormat;
+import java.util.stream.Collectors;
 
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Query;
@@ -270,5 +272,17 @@ public class BookingService {
             booking.getDocuments().remove(documentName);
         }
         bookingRepository.save(booking);
+    }
+    /**
+     * Récupère les valeurs distinctes réellement présentes dans la collection 'bookings'
+     * pour interviewStatus — alimente le filtrage dynamique du frontend (orders + bookings).
+     */
+    public Map<String, List<String>> getFilterOptions() {
+        List<String> interviewStatuses = mongoTemplate.findDistinct(new Query(), "interviewStatus", Booking.class, String.class)
+                .stream().filter(StringUtils::hasText).sorted().collect(Collectors.toList());
+
+        Map<String, List<String>> result = new LinkedHashMap<>();
+        result.put("interviewStatuses", interviewStatuses);
+        return result;
     }
 }
